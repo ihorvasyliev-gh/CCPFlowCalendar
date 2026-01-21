@@ -9,6 +9,15 @@
 /*.mjs
   Content-Type: application/javascript; charset=utf-8
 
+/*.jsx
+  Content-Type: application/javascript; charset=utf-8
+
+/*.ts
+  Content-Type: application/javascript; charset=utf-8
+
+/*.tsx
+  Content-Type: application/javascript; charset=utf-8
+
 /*.css
   Content-Type: text/css; charset=utf-8
 
@@ -20,3 +29,6 @@
 
 /*.wasm
   Content-Type: application/wasm
+
+/assets/*
+  Content-Type: application/javascript; charset=utf-8
