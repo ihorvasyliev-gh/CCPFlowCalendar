@@ -18,6 +18,9 @@ export const signUp = async (
   fullName: string,
   role: UserRole = UserRole.STAFF
 ): Promise<User> => {
+  // Регистрация без подтверждения почты
+  // ВАЖНО: Отключите подтверждение email в Supabase Dashboard:
+  // Authentication → Settings → Email Auth → Confirm email (OFF)
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
@@ -25,7 +28,8 @@ export const signUp = async (
       data: {
         full_name: fullName,
         role: role
-      }
+      },
+      emailRedirectTo: undefined // Не отправляем email для подтверждения
     }
   });
 
@@ -36,6 +40,9 @@ export const signUp = async (
   if (!authData.user) {
     throw new Error('Failed to create user');
   }
+
+  // Если подтверждение email отключено в Dashboard, authData.session будет создана автоматически
+  // Если включено - сессии не будет, но пользователь все равно будет создан
 
   // Получаем профиль пользователя из public.users
   // Триггер должен был создать запись автоматически, но подождем немного

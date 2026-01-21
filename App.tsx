@@ -72,12 +72,18 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (user) {
       setLoadingEvents(true);
-      getEvents().then(data => {
-        setEvents(data);
-        setLoadingEvents(false);
-      });
+      getEvents()
+        .then(data => {
+          setEvents(data);
+          setLoadingEvents(false);
+        })
+        .catch(error => {
+          console.error('Error loading events:', error);
+          showToast('Failed to load events', 'error');
+          setLoadingEvents(false);
+        });
     }
-  }, [user]);
+  }, [user, showToast]);
 
   // Auth Handlers
   const handleLogin = (loggedInUser: User) => {
