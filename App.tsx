@@ -12,7 +12,8 @@ import { ToastProvider, useToast } from './contexts/ToastContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { User, Event, EventFilters } from './types';
 import { getEvents, createEvent, updateEvent } from './services/eventService';
-import { logout as logoutService } from './services/authService';
+import { logout as logoutService, getCurrentUser } from './services/authService';
+import { supabase } from './lib/supabase';
 import { filterEvents } from './utils/filterEvents';
 
 const AppContent: React.FC = () => {
@@ -30,6 +31,42 @@ const AppContent: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+  // Check for existing session on mount
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+        }
+      } catch (error) {
+        console.error('Error checking session:', error);
+      }
+    };
+
+    checkSession();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        try {
+          const currentUser = await getCurrentUser();
+          if (currentUser) {
+            setUser(currentUser);
+          }
+        } catch (error) {
+          console.error('Error getting user after sign in:', error);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // Initial Load
   useEffect(() => {
