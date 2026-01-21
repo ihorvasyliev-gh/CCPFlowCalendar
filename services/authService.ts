@@ -11,13 +11,30 @@ const mapSupabaseUserToUser = (supabaseUser: any): User => {
   };
 };
 
-// Вспомогательная функция для таймаута запросов
+// Вспомогательная функция для таймаута запросов с поддержкой отмены
 const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
+  let timeoutId: NodeJS.Timeout;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error('Request timeout. Please check your connection and try again.'));
+    }, timeoutMs);
+  });
+
   return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => 
-      setTimeout(() => reject(new Error('Request timeout. Please check your connection and try again.')), timeoutMs)
-    )
+    promise
+      .then(result => {
+        clearTimeout(timeoutId);
+        return result;
+      })
+      .catch(error => {
+        clearTimeout(timeoutId);
+        // Если это AbortError, пробрасываем его как есть, но с более понятным сообщением
+        if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+          throw new Error('Request was cancelled. Please try again.');
+        }
+        throw error;
+      }),
+    timeoutPromise
   ]);
 };
 
@@ -96,6 +113,17 @@ export const signUp = async (
     return mapSupabaseUserToUser(userData);
   } catch (error: any) {
     console.error('Sign up error:', error);
+    
+    // Обрабатываем AbortError отдельно
+    if (error?.name === 'AbortError' || error?.message?.includes('aborted') || error?.message?.includes('cancelled')) {
+      throw new Error('Request was cancelled. Please try again.');
+    }
+    
+    // Обрабатываем таймауты
+    if (error?.message?.includes('timeout')) {
+      throw new Error('Request timed out. Please check your connection and try again.');
+    }
+    
     throw new Error(error.message || 'Registration failed. Please check your connection and try again.');
   }
 };
@@ -168,8 +196,13 @@ export const login = async (email: string, password: string): Promise<User> => {
     // Логируем ошибку для отладки
     console.error('Login error:', error);
     
-    // Если это уже наша ошибка, просто пробрасываем её
-    if (error.message && error.message.includes('timeout')) {
+    // Обрабатываем AbortError отдельно
+    if (error?.name === 'AbortError' || error?.message?.includes('aborted') || error?.message?.includes('cancelled')) {
+      throw new Error('Request was cancelled. Please try again.');
+    }
+    
+    // Если это уже наша ошибка (таймаут или другая обработанная), просто пробрасываем её
+    if (error.message && (error.message.includes('timeout') || error.message.includes('Request was cancelled'))) {
       throw error;
     }
     
@@ -188,23 +221,38 @@ export const logout = async (): Promise<void> => {
 
 // Получить текущего пользователя
 export const getCurrentUser = async (): Promise<User | null> => {
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session?.user) {
+  try {
+    const { data: { session }, error: sessionError } = await withTimeout(
+      supabase.auth.getSession(),
+      5000
+    );
+    
+    if (sessionError || !session?.user) {
+      return null;
+    }
+
+    const { data: userData, error } = await withTimeout(
+      supabase
+        .from('users')
+        .select('*')
+        .eq('id', session.user.id)
+        .single(),
+      5000
+    );
+
+    if (error || !userData) {
+      return null;
+    }
+
+    return mapSupabaseUserToUser(userData);
+  } catch (error: any) {
+    // Игнорируем AbortError и таймауты при проверке сессии - это нормально
+    if (error?.name === 'AbortError' || error?.message?.includes('aborted') || error?.message?.includes('cancelled') || error?.message?.includes('timeout')) {
+      return null;
+    }
+    console.error('Error getting current user:', error);
     return null;
   }
-
-  const { data: userData, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', session.user.id)
-    .single();
-
-  if (error || !userData) {
-    return null;
-  }
-
-  return mapSupabaseUserToUser(userData);
 };
 
 // Получить текущую сессию

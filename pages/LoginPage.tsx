@@ -14,9 +14,27 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const requestIdRef = React.useRef(0);
+  const isMountedRef = React.useRef(true);
+
+  // Очистка при размонтировании компонента
+  React.useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Предотвращаем множественные отправки
+    if (isLoading) {
+      return;
+    }
+
+    // Увеличиваем ID запроса для отслеживания актуальности
+    const currentRequestId = ++requestIdRef.current;
     setIsLoading(true);
     setError('');
 
@@ -37,8 +55,24 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       } else {
         user = await login(email, password);
       }
+      
+      // Проверяем, что это все еще актуальный запрос и компонент смонтирован
+      if (currentRequestId !== requestIdRef.current || !isMountedRef.current) {
+        return;
+      }
+      
       onLogin(user);
     } catch (err: any) {
+      // Проверяем, что это все еще актуальный запрос и компонент смонтирован
+      if (currentRequestId !== requestIdRef.current || !isMountedRef.current) {
+        return;
+      }
+      
+      // Игнорируем ошибки отмены запроса (AbortError)
+      if (err?.name === 'AbortError' || err?.message?.includes('aborted') || err?.message?.includes('cancelled')) {
+        return;
+      }
+      
       // Показываем более детальное сообщение об ошибке
       const errorMessage = err.message || (isSignUp ? 'Registration failed' : 'Login failed');
       setError(errorMessage);
@@ -46,7 +80,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       // Логируем ошибку в консоль для отладки
       console.error('Authentication error:', err);
     } finally {
-      setIsLoading(false);
+      // Обновляем состояние только если это актуальный запрос
+      if (currentRequestId === requestIdRef.current && isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 

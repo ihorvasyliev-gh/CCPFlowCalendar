@@ -34,37 +34,55 @@ const AppContent: React.FC = () => {
 
   // Check for existing session on mount
   useEffect(() => {
+    let isMounted = true;
+    let subscription: { unsubscribe: () => void } | null = null;
+
     const checkSession = async () => {
       try {
         const currentUser = await getCurrentUser();
-        if (currentUser) {
+        // Проверяем, что компонент все еще смонтирован перед обновлением состояния
+        if (isMounted && currentUser) {
           setUser(currentUser);
         }
-      } catch (error) {
-        console.error('Error checking session:', error);
+      } catch (error: any) {
+        // Игнорируем AbortError и таймауты при проверке сессии
+        if (error?.name !== 'AbortError' && !error?.message?.includes('aborted') && !error?.message?.includes('cancelled')) {
+          console.error('Error checking session:', error);
+        }
       }
     };
 
     checkSession();
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+
       if (event === 'SIGNED_IN' && session) {
         try {
           const currentUser = await getCurrentUser();
-          if (currentUser) {
+          // Проверяем, что компонент все еще смонтирован перед обновлением состояния
+          if (isMounted && currentUser) {
             setUser(currentUser);
           }
-        } catch (error) {
-          console.error('Error getting user after sign in:', error);
+        } catch (error: any) {
+          // Игнорируем AbortError и таймауты
+          if (error?.name !== 'AbortError' && !error?.message?.includes('aborted') && !error?.message?.includes('cancelled')) {
+            console.error('Error getting user after sign in:', error);
+          }
         }
-      } else if (event === 'SIGNED_OUT') {
+      } else if (event === 'SIGNED_OUT' && isMounted) {
         setUser(null);
       }
     });
 
+    subscription = authSubscription;
+
     return () => {
-      subscription.unsubscribe();
+      isMounted = false;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
     };
   }, []);
 
