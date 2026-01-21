@@ -11,6 +11,16 @@ const mapSupabaseUserToUser = (supabaseUser: any): User => {
   };
 };
 
+// Вспомогательная функция для таймаута запросов
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error('Request timeout. Please check your connection and try again.')), timeoutMs)
+    )
+  ]);
+};
+
 // Регистрация нового пользователя
 export const signUp = async (
   email: string,
@@ -18,118 +28,154 @@ export const signUp = async (
   fullName: string,
   role: UserRole = UserRole.STAFF
 ): Promise<User> => {
-  // Регистрация БЕЗ подтверждения почты
-  // ВАЖНО: Подтверждение email должно быть отключено в Supabase Dashboard:
-  // Authentication → Settings → Email Auth → Confirm email (OFF)
-  // Это позволяет пользователям сразу входить после регистрации
-  // Если Confirm email = OFF, signUp() автоматически вернет session
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        full_name: fullName,
-        role: role
-      },
-      emailRedirectTo: undefined // Не отправляем email для подтверждения
+  try {
+    // Регистрация БЕЗ подтверждения почты
+    // ВАЖНО: Подтверждение email должно быть отключено в Supabase Dashboard:
+    // Authentication → Settings → Email Auth → Confirm email (OFF)
+    // Это позволяет пользователям сразу входить после регистрации
+    // Если Confirm email = OFF, signUp() автоматически вернет session
+    const signUpPromise = supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+          role: role
+        },
+        emailRedirectTo: undefined // Не отправляем email для подтверждения
+      }
+    });
+
+    const { data: authData, error: authError } = await withTimeout(signUpPromise, 10000);
+
+    if (authError) {
+      throw new Error(authError.message || 'Failed to sign up');
     }
-  });
 
-  if (authError) {
-    throw new Error(authError.message || 'Failed to sign up');
-  }
+    if (!authData.user) {
+      throw new Error('Failed to create user');
+    }
 
-  if (!authData.user) {
-    throw new Error('Failed to create user');
-  }
+    // Если подтверждение email отключено в Dashboard, authData.session будет создана автоматически
+    // Если включено - сессии не будет, но пользователь все равно будет создан
 
-  // Если подтверждение email отключено в Dashboard, authData.session будет создана автоматически
-  // Если включено - сессии не будет, но пользователь все равно будет создан
+    // Получаем профиль пользователя из public.users
+    // Триггер должен был создать запись автоматически, но подождем немного
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-  // Получаем профиль пользователя из public.users
-  // Триггер должен был создать запись автоматически, но подождем немного
-  await new Promise(resolve => setTimeout(resolve, 500));
-
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', authData.user.id)
-    .single();
-
-  if (userError || !userData) {
-    // Если профиль еще не создан, создаем вручную
-    const { data: newUserData, error: insertError } = await supabase
+    const userQueryPromise = supabase
       .from('users')
-      .insert({
-        id: authData.user.id,
-        email: authData.user.email!,
-        full_name: fullName,
-        role: role
-      })
-      .select()
+      .select('*')
+      .eq('id', authData.user.id)
       .single();
 
-    if (insertError || !newUserData) {
-      throw new Error(insertError?.message || 'Failed to create user profile');
+    const { data: userData, error: userError } = await withTimeout(userQueryPromise, 10000);
+
+    if (userError || !userData) {
+      // Если профиль еще не создан, создаем вручную
+      const insertPromise = supabase
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          email: authData.user.email!,
+          full_name: fullName,
+          role: role
+        })
+        .select()
+        .single();
+
+      const { data: newUserData, error: insertError } = await withTimeout(insertPromise, 10000);
+
+      if (insertError || !newUserData) {
+        throw new Error(insertError?.message || 'Failed to create user profile');
+      }
+
+      return mapSupabaseUserToUser(newUserData);
     }
 
-    return mapSupabaseUserToUser(newUserData);
+    return mapSupabaseUserToUser(userData);
+  } catch (error: any) {
+    console.error('Sign up error:', error);
+    throw new Error(error.message || 'Registration failed. Please check your connection and try again.');
   }
-
-  return mapSupabaseUserToUser(userData);
 };
 
 // Вход пользователя
 export const login = async (email: string, password: string): Promise<User> => {
-  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-    email,
-    password
-  });
+  try {
+    // Добавляем таймаут для запроса аутентификации
+    const authPromise = supabase.auth.signInWithPassword({
+      email,
+      password
+    });
 
-  if (authError) {
-    // Улучшенная обработка ошибок с более понятными сообщениями
-    let errorMessage = authError.message || 'Invalid email or password';
-    
-    // Парсим специфичные ошибки Supabase
-    if (authError.status === 400) {
-      if (authError.message?.includes('Invalid login credentials') || 
-          authError.message?.includes('Email not confirmed')) {
-        errorMessage = 'Invalid email or password. Please check your credentials or confirm your email.';
-      } else if (authError.message?.includes('Email not confirmed')) {
-        errorMessage = 'Please confirm your email address before signing in. Check your inbox for a confirmation email.';
-      } else if (authError.message?.includes('User not found')) {
-        errorMessage = 'User not found. Please sign up first or contact your administrator.';
-      } else {
-        errorMessage = `Authentication failed: ${authError.message}. Please check your credentials or contact support.`;
+    const { data: authData, error: authError } = await withTimeout(authPromise, 10000);
+
+    if (authError) {
+      // Улучшенная обработка ошибок с более понятными сообщениями
+      let errorMessage = authError.message || 'Invalid email or password';
+      
+      // Парсим специфичные ошибки Supabase
+      if (authError.status === 400) {
+        if (authError.message?.includes('Invalid login credentials') || 
+            authError.message?.includes('Email not confirmed')) {
+          errorMessage = 'Invalid email or password. Please check your credentials or confirm your email.';
+        } else if (authError.message?.includes('Email not confirmed')) {
+          errorMessage = 'Please confirm your email address before signing in. Check your inbox for a confirmation email.';
+        } else if (authError.message?.includes('User not found')) {
+          errorMessage = 'User not found. Please sign up first or contact your administrator.';
+        } else {
+          errorMessage = `Authentication failed: ${authError.message}. Please check your credentials or contact support.`;
+        }
+      } else if (authError.status === 429) {
+        errorMessage = 'Too many login attempts. Please wait a moment and try again.';
       }
-    } else if (authError.status === 429) {
-      errorMessage = 'Too many login attempts. Please wait a moment and try again.';
+      
+      throw new Error(errorMessage);
+    }
+
+    if (!authData.user) {
+      throw new Error('Failed to sign in. Please try again.');
+    }
+
+    // Проверяем, подтвержден ли email (если требуется)
+    // ВАЖНО: Если в Supabase Dashboard отключено подтверждение email, 
+    // эта проверка может блокировать вход. Комментируем её, если подтверждение отключено.
+    // if (authData.user.email_confirmed_at === null) {
+    //   throw new Error('Please confirm your email address before signing in. Check your inbox for a confirmation email.');
+    // }
+
+    // Получаем профиль пользователя из public.users с таймаутом
+    const userQueryPromise = supabase
+      .from('users')
+      .select('*')
+      .eq('id', authData.user.id)
+      .single();
+
+    const { data: userData, error: userError } = await withTimeout(userQueryPromise, 10000);
+
+    if (userError) {
+      console.error('Error fetching user profile:', userError);
+      throw new Error(`User profile not found: ${userError.message}. Please contact administrator.`);
+    }
+
+    if (!userData) {
+      throw new Error('User profile not found. Please contact administrator.');
+    }
+
+    return mapSupabaseUserToUser(userData);
+  } catch (error: any) {
+    // Логируем ошибку для отладки
+    console.error('Login error:', error);
+    
+    // Если это уже наша ошибка, просто пробрасываем её
+    if (error.message && error.message.includes('timeout')) {
+      throw error;
     }
     
-    throw new Error(errorMessage);
+    // Для других ошибок пробрасываем с понятным сообщением
+    throw new Error(error.message || 'Login failed. Please check your connection and try again.');
   }
-
-  if (!authData.user) {
-    throw new Error('Failed to sign in. Please try again.');
-  }
-
-  // Проверяем, подтвержден ли email (если требуется)
-  if (authData.user.email_confirmed_at === null) {
-    throw new Error('Please confirm your email address before signing in. Check your inbox for a confirmation email.');
-  }
-
-  // Получаем профиль пользователя из public.users
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', authData.user.id)
-    .single();
-
-  if (userError || !userData) {
-    throw new Error('User profile not found. Please contact administrator.');
-  }
-
-  return mapSupabaseUserToUser(userData);
 };
 
 // Выход пользователя
