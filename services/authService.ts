@@ -87,11 +87,35 @@ export const login = async (email: string, password: string): Promise<User> => {
   });
 
   if (authError) {
-    throw new Error(authError.message || 'Invalid email or password');
+    // Улучшенная обработка ошибок с более понятными сообщениями
+    let errorMessage = authError.message || 'Invalid email or password';
+    
+    // Парсим специфичные ошибки Supabase
+    if (authError.status === 400) {
+      if (authError.message?.includes('Invalid login credentials') || 
+          authError.message?.includes('Email not confirmed')) {
+        errorMessage = 'Invalid email or password. Please check your credentials or confirm your email.';
+      } else if (authError.message?.includes('Email not confirmed')) {
+        errorMessage = 'Please confirm your email address before signing in. Check your inbox for a confirmation email.';
+      } else if (authError.message?.includes('User not found')) {
+        errorMessage = 'User not found. Please sign up first or contact your administrator.';
+      } else {
+        errorMessage = `Authentication failed: ${authError.message}. Please check your credentials or contact support.`;
+      }
+    } else if (authError.status === 429) {
+      errorMessage = 'Too many login attempts. Please wait a moment and try again.';
+    }
+    
+    throw new Error(errorMessage);
   }
 
   if (!authData.user) {
-    throw new Error('Failed to sign in');
+    throw new Error('Failed to sign in. Please try again.');
+  }
+
+  // Проверяем, подтвержден ли email (если требуется)
+  if (authData.user.email_confirmed_at === null) {
+    throw new Error('Please confirm your email address before signing in. Check your inbox for a confirmation email.');
   }
 
   // Получаем профиль пользователя из public.users

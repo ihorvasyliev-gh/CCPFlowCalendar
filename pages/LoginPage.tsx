@@ -39,7 +39,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       }
       onLogin(user);
     } catch (err: any) {
-      setError(err.message || (isSignUp ? 'Registration failed' : 'Login failed'));
+      // Показываем более детальное сообщение об ошибке
+      const errorMessage = err.message || (isSignUp ? 'Registration failed' : 'Login failed');
+      setError(errorMessage);
+      
+      // Логируем ошибку в консоль для отладки
+      console.error('Authentication error:', err);
     } finally {
       setIsLoading(false);
     }
