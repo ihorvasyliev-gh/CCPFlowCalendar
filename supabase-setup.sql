@@ -508,7 +508,27 @@ CREATE TRIGGER on_auth_user_created
   EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================
--- 8. ТЕСТОВЫЕ ДАННЫЕ (опционально)
+-- 8. АВТОПОДТВЕРЖДЕНИЕ EMAIL (ОТКЛЮЧЕНИЕ ПОДТВЕРЖДЕНИЯ)
+-- ============================================
+
+-- ВАЖНО: Для отключения подтверждения email выполните следующие шаги:
+-- 1. В Supabase Dashboard: Authentication → Settings → Email Auth → Confirm email: OFF
+-- 2. Или используйте Management API для настройки
+
+-- Функция для автоматического подтверждения email существующих пользователей
+-- (выполните вручную для существующих пользователей, если нужно)
+CREATE OR REPLACE FUNCTION public.auto_confirm_user_email(user_id UUID)
+RETURNS void AS $$
+BEGIN
+  -- Обновляем email_confirmed_at для пользователя
+  UPDATE auth.users
+  SET email_confirmed_at = COALESCE(email_confirmed_at, NOW())
+  WHERE id = user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================
+-- 9. ТЕСТОВЫЕ ДАННЫЕ (опционально)
 -- ============================================
 
 -- Раскомментируйте для создания тестовых данных

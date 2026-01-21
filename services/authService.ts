@@ -18,9 +18,11 @@ export const signUp = async (
   fullName: string,
   role: UserRole = UserRole.STAFF
 ): Promise<User> => {
-  // Регистрация без подтверждения почты
-  // ВАЖНО: Отключите подтверждение email в Supabase Dashboard:
+  // Регистрация БЕЗ подтверждения почты
+  // ВАЖНО: Подтверждение email должно быть отключено в Supabase Dashboard:
   // Authentication → Settings → Email Auth → Confirm email (OFF)
+  // Это позволяет пользователям сразу входить после регистрации
+  // Если Confirm email = OFF, signUp() автоматически вернет session
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
