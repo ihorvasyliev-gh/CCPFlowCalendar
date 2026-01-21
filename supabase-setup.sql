@@ -141,18 +141,21 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Триггер для таблицы users
+DROP TRIGGER IF EXISTS update_users_updated_at ON public.users;
 CREATE TRIGGER update_users_updated_at
   BEFORE UPDATE ON public.users
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Триггер для таблицы events
+DROP TRIGGER IF EXISTS update_events_updated_at ON public.events;
 CREATE TRIGGER update_events_updated_at
   BEFORE UPDATE ON public.events
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Триггер для таблицы rsvps
+DROP TRIGGER IF EXISTS update_rsvps_updated_at ON public.rsvps;
 CREATE TRIGGER update_rsvps_updated_at
   BEFORE UPDATE ON public.rsvps
   FOR EACH ROW
@@ -175,16 +178,19 @@ ALTER TABLE public.rsvps ENABLE ROW LEVEL SECURITY;
 -- ============================================
 
 -- Все пользователи могут видеть всех пользователей
+DROP POLICY IF EXISTS "Users are viewable by everyone" ON public.users;
 CREATE POLICY "Users are viewable by everyone"
   ON public.users FOR SELECT
   USING (true);
 
 -- Пользователи могут обновлять только свой профиль
+DROP POLICY IF EXISTS "Users can update own profile" ON public.users;
 CREATE POLICY "Users can update own profile"
   ON public.users FOR UPDATE
   USING (auth.uid() = id);
 
 -- Администраторы могут создавать пользователей
+DROP POLICY IF EXISTS "Admins can insert users" ON public.users;
 CREATE POLICY "Admins can insert users"
   ON public.users FOR INSERT
   WITH CHECK (
@@ -199,6 +205,7 @@ CREATE POLICY "Admins can insert users"
 -- ============================================
 
 -- Все авторизованные пользователи могут видеть опубликованные события
+DROP POLICY IF EXISTS "Published events are viewable by everyone" ON public.events;
 CREATE POLICY "Published events are viewable by everyone"
   ON public.events FOR SELECT
   USING (
@@ -211,11 +218,13 @@ CREATE POLICY "Published events are viewable by everyone"
   );
 
 -- Только создатель или админ могут создавать события
+DROP POLICY IF EXISTS "Users can create events" ON public.events;
 CREATE POLICY "Users can create events"
   ON public.events FOR INSERT
   WITH CHECK (auth.uid() = creator_id);
 
 -- Только создатель или админ могут обновлять события
+DROP POLICY IF EXISTS "Users can update own events" ON public.events;
 CREATE POLICY "Users can update own events"
   ON public.events FOR UPDATE
   USING (
@@ -227,6 +236,7 @@ CREATE POLICY "Users can update own events"
   );
 
 -- Только создатель или админ могут удалять события
+DROP POLICY IF EXISTS "Users can delete own events" ON public.events;
 CREATE POLICY "Users can delete own events"
   ON public.events FOR DELETE
   USING (
@@ -242,6 +252,7 @@ CREATE POLICY "Users can delete own events"
 -- ============================================
 
 -- Все могут видеть вложения опубликованных событий
+DROP POLICY IF EXISTS "Attachments are viewable for published events" ON public.event_attachments;
 CREATE POLICY "Attachments are viewable for published events"
   ON public.event_attachments FOR SELECT
   USING (
@@ -259,6 +270,7 @@ CREATE POLICY "Attachments are viewable for published events"
   );
 
 -- Только создатель события или админ могут добавлять вложения
+DROP POLICY IF EXISTS "Users can insert attachments to own events" ON public.event_attachments;
 CREATE POLICY "Users can insert attachments to own events"
   ON public.event_attachments FOR INSERT
   WITH CHECK (
@@ -275,6 +287,7 @@ CREATE POLICY "Users can insert attachments to own events"
   );
 
 -- Только создатель события или админ могут удалять вложения
+DROP POLICY IF EXISTS "Users can delete attachments from own events" ON public.event_attachments;
 CREATE POLICY "Users can delete attachments from own events"
   ON public.event_attachments FOR DELETE
   USING (
@@ -295,6 +308,7 @@ CREATE POLICY "Users can delete attachments from own events"
 -- ============================================
 
 -- Все могут видеть комментарии к опубликованным событиям
+DROP POLICY IF EXISTS "Comments are viewable for published events" ON public.event_comments;
 CREATE POLICY "Comments are viewable for published events"
   ON public.event_comments FOR SELECT
   USING (
@@ -315,6 +329,7 @@ CREATE POLICY "Comments are viewable for published events"
   );
 
 -- Все авторизованные пользователи могут добавлять комментарии
+DROP POLICY IF EXISTS "Authenticated users can insert comments" ON public.event_comments;
 CREATE POLICY "Authenticated users can insert comments"
   ON public.event_comments FOR INSERT
   WITH CHECK (
@@ -326,6 +341,7 @@ CREATE POLICY "Authenticated users can insert comments"
   );
 
 -- Пользователи могут удалять только свои комментарии, админы - любые
+DROP POLICY IF EXISTS "Users can delete own comments" ON public.event_comments;
 CREATE POLICY "Users can delete own comments"
   ON public.event_comments FOR DELETE
   USING (
@@ -341,6 +357,7 @@ CREATE POLICY "Users can delete own comments"
 -- ============================================
 
 -- Все могут видеть историю опубликованных событий
+DROP POLICY IF EXISTS "History is viewable for published events" ON public.event_history;
 CREATE POLICY "History is viewable for published events"
   ON public.event_history FOR SELECT
   USING (
@@ -358,6 +375,7 @@ CREATE POLICY "History is viewable for published events"
   );
 
 -- История создается автоматически через триггеры (только для админов и создателей)
+DROP POLICY IF EXISTS "History can be inserted by system" ON public.event_history;
 CREATE POLICY "History can be inserted by system"
   ON public.event_history FOR INSERT
   WITH CHECK (
@@ -378,6 +396,7 @@ CREATE POLICY "History can be inserted by system"
 -- ============================================
 
 -- Все могут видеть RSVP для опубликованных событий
+DROP POLICY IF EXISTS "RSVPs are viewable for published events" ON public.rsvps;
 CREATE POLICY "RSVPs are viewable for published events"
   ON public.rsvps FOR SELECT
   USING (
@@ -398,6 +417,7 @@ CREATE POLICY "RSVPs are viewable for published events"
   );
 
 -- Пользователи могут создавать RSVP для себя
+DROP POLICY IF EXISTS "Users can create own RSVP" ON public.rsvps;
 CREATE POLICY "Users can create own RSVP"
   ON public.rsvps FOR INSERT
   WITH CHECK (
@@ -409,11 +429,13 @@ CREATE POLICY "Users can create own RSVP"
   );
 
 -- Пользователи могут обновлять только свой RSVP
+DROP POLICY IF EXISTS "Users can update own RSVP" ON public.rsvps;
 CREATE POLICY "Users can update own RSVP"
   ON public.rsvps FOR UPDATE
   USING (auth.uid() = user_id);
 
 -- Пользователи могут удалять только свой RSVP
+DROP POLICY IF EXISTS "Users can delete own RSVP" ON public.rsvps;
 CREATE POLICY "Users can delete own RSVP"
   ON public.rsvps FOR DELETE
   USING (auth.uid() = user_id);
@@ -477,6 +499,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Триггер для автоматического создания истории при создании события
+DROP TRIGGER IF EXISTS on_event_created ON public.events;
 CREATE TRIGGER on_event_created
   AFTER INSERT ON public.events
   FOR EACH ROW
@@ -502,6 +525,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Триггер для автоматического создания пользователя
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW
