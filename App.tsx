@@ -241,7 +241,7 @@ const AppContent: React.FC = () => {
 
       <footer className="bg-white border-t border-slate-200 mt-auto py-6">
         <div className="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">
-          &copy; {new Date().getFullYear()} CCP City Center. Internal Use Only.
+          &copy; {new Date().getFullYear()} Cork City Partnership. Internal Use Only.
         </div>
       </footer>
     </div>
