@@ -33,39 +33,19 @@ const AppContent: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
-  // Check for existing session on mount
-  // Check for existing session on mount
+  // Session restoration - using only onAuthStateChange (recommended Supabase pattern)
   const userIdRef = React.useRef<string | null>(null);
-  const fetchingUserRef = React.useRef<Set<string>>(new Set());
   const isInitializedRef = React.useRef(false);
 
   useEffect(() => {
     let isMounted = true;
+    const initStartTime = performance.now();
 
-    // Only start timer if not already initialized
-    if (!isInitializedRef.current) {
-      console.time('Session Initialization');
-    }
-
-    const finishInitialization = () => {
-      if (isMounted && !isInitializedRef.current) {
-        isInitializedRef.current = true;
-        setIsSessionLoading(false);
-        // Safely end timer
-        try {
-          console.timeEnd('Session Initialization');
-        } catch (e) {
-          // Timer might not exist
-        }
-      } else if (isMounted) {
-        setIsSessionLoading(false);
+    const fetchUserProfile = async (uid: string): Promise<boolean> => {
+      // Skip if already loaded this user
+      if (userIdRef.current === uid) {
+        return true;
       }
-    };
-
-    const fetchUserProfile = async (uid: string) => {
-      if (userIdRef.current === uid || fetchingUserRef.current.has(uid)) return;
-
-      fetchingUserRef.current.add(uid);
 
       try {
         console.log('Fetching user details for:', uid);
@@ -75,53 +55,47 @@ const AppContent: React.FC = () => {
           userIdRef.current = currentUser.id;
           setUser(currentUser);
           console.log('User restored:', currentUser.email);
+          return true;
         }
+        return false;
       } catch (error) {
         console.error('Error fetching user profile:', error);
-      } finally {
-        if (isMounted) {
-          fetchingUserRef.current.delete(uid);
-          finishInitialization();
-        }
+        return false;
       }
     };
 
-    const initializeSession = async () => {
-      try {
-        // Get initial session
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (session && isMounted) {
-          if (userIdRef.current === session.user.id) {
-            finishInitialization();
-            return;
-          }
-          console.log('Found existing session in initializeSession');
-          await fetchUserProfile(session.user.id);
-        } else if (isMounted) {
-          // No session found, stop loading
-          finishInitialization();
-        }
-      } catch (error) {
-        console.error('Error initializing session:', error);
-        finishInitialization();
+    const finishInitialization = () => {
+      if (!isInitializedRef.current && isMounted) {
+        isInitializedRef.current = true;
+        setIsSessionLoading(false);
+        console.log(`Session initialized in ${(performance.now() - initStartTime).toFixed(0)}ms`);
       }
     };
 
-    initializeSession();
-
-    // Listen for auth state changes
+    // onAuthStateChange fires IMMEDIATELY with INITIAL_SESSION when subscribed
+    // This is the recommended Supabase pattern - no need for separate getSession() call
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state change:', event);
       if (!isMounted) return;
 
-      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session) {
-        await fetchUserProfile(session.user.id);
+      if (event === 'INITIAL_SESSION') {
+        // This fires immediately on subscription with current session state
+        if (session) {
+          await fetchUserProfile(session.user.id);
+        }
+        finishInitialization();
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // User just logged in or token was refreshed
+        if (session) {
+          await fetchUserProfile(session.user.id);
+        }
+        if (!isInitializedRef.current) {
+          finishInitialization();
+        }
       } else if (event === 'SIGNED_OUT') {
         userIdRef.current = null;
-        fetchingUserRef.current.clear();
         setUser(null);
-        setEvents([]); // Clear data on logout
+        setEvents([]);
         setIsSessionLoading(false);
       }
     });
