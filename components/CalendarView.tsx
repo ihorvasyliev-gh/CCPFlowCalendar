@@ -189,10 +189,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
               const isToday = isSameDay(day, new Date());
 
               return (
-                <div key={day.toISOString()} className={`min-h-[8rem] group border-b border-r border-slate-100 dark:border-slate-800 p-2 transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/50 ${isToday ? 'bg-slate-50/80 dark:bg-slate-800/80' : 'bg-white dark:bg-slate-900/0'}`}>
-                  <div className={`text-right text-xs font-semibold mb-2 ${isToday ? 'text-brand-600 dark:text-brand-400' : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500'}`}>
+                <div key={day.toISOString()} className={`min-h-[8rem] group border-b border-r border-slate-100 dark:border-slate-800 p-2 transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/50 ${isToday ? 'bg-brand-50 dark:bg-brand-900/50 ring-2 ring-brand-500 dark:ring-brand-400 ring-inset shadow-sm dark:shadow-brand-900/20' : 'bg-white dark:bg-slate-900/0'}`}>
+                  <div className={`text-right text-xs font-semibold mb-2 ${isToday ? 'text-brand-700 dark:text-brand-300' : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500'}`}>
                     {isToday ? (
-                      <span className="bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300 px-1.5 py-0.5 rounded-full">{day.getDate()}</span>
+                      <span className="bg-brand-500 dark:bg-brand-400 text-white dark:text-slate-900 px-2 py-1 rounded-full font-bold text-sm shadow-sm">{day.getDate()}</span>
                     ) : day.getDate()}
                   </div>
                   <div className="space-y-1">

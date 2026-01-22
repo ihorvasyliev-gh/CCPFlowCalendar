@@ -32,7 +32,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
           <div className="flex items-center gap-3">
             <div className="hidden md:flex flex-col items-end pr-4 mr-2 border-r border-slate-200 dark:border-slate-800">
               <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{user.fullName}</span>
-              <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">{user.role}</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">{user.role}</span>
             </div>
 
             <div className="flex items-center gap-2">
@@ -70,7 +70,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
 
               <button
                 onClick={onLogout}
-                className="group flex items-center gap-2 p-2 text-slate-400 hover:text-red-600 transition-colors rounded-lg btn-hover-effect"
+                className="group flex items-center gap-2 p-2 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors rounded-lg btn-hover-effect"
                 title="Sign Out"
               >
                 <LogOut className="h-5 w-5" />

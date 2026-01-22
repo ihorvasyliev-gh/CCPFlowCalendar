@@ -407,7 +407,7 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col font-sans">
       <Navbar
         user={user}
         onLogout={handleLogout}
@@ -428,7 +428,7 @@ const AppContent: React.FC = () => {
         </div>
 
         {loadingEvents ? (
-          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
             <div className="grid grid-cols-7 gap-2 lg:gap-4">
               {Array.from({ length: 35 }).map((_, idx) => (
                 <CalendarDaySkeleton key={idx} />
@@ -470,8 +470,8 @@ const AppContent: React.FC = () => {
         </Suspense>
       )}
 
-      <footer className="bg-white border-t border-slate-200 mt-auto py-6">
-        <div className="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">
+      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-auto py-6">
+        <div className="max-w-7xl mx-auto px-4 text-center text-slate-500 dark:text-slate-400 text-sm">
           &copy; {new Date().getFullYear()} Cork City Partnership. Internal Use Only.
         </div>
       </footer>

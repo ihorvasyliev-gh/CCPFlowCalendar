@@ -92,8 +92,8 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors ${
           hasActiveFilters
-            ? 'bg-blue-50 border-blue-300 text-blue-700'
-            : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+            ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+            : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
         }`}
         aria-label="Filter events"
         aria-expanded={isOpen}
@@ -121,12 +121,12 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
             onClick={() => setIsOpen(false)}
             aria-hidden="true"
           />
-          <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-slate-200 z-50 p-4 space-y-4 max-h-[80vh] overflow-y-auto">
+          <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 z-50 p-4 space-y-4 max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-slate-900">Filters</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Filters</h3>
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
                 aria-label="Close filters"
               >
                 <X className="h-5 w-5" />
@@ -135,7 +135,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
 
             {/* Quick Date Filters */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 <Calendar className="h-4 w-4 inline mr-1" />
                 Quick Date Filters
               </label>
@@ -144,7 +144,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
                   <button
                     key={filter.label}
                     onClick={() => applyQuickDate(filter.getRange)}
-                    className="px-3 py-2 text-sm border border-slate-300 rounded-md hover:bg-slate-50 text-left"
+                    className="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700 text-left bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200"
                   >
                     {filter.label}
                   </button>
@@ -161,7 +161,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
                       dateRange: { ...filters.dateRange, start }
                     });
                   }}
-                  className="px-3 py-2 text-sm border border-slate-300 rounded-md"
+                  className="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200"
                 />
                 <input
                   type="date"
@@ -173,14 +173,14 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
                       dateRange: { ...filters.dateRange, end }
                     });
                   }}
-                  className="px-3 py-2 text-sm border border-slate-300 rounded-md"
+                  className="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200"
                 />
               </div>
             </div>
 
             {/* Category Filter */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Category
               </label>
               <select
@@ -191,7 +191,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
                     category: e.target.value ? (e.target.value as EventCategory) : undefined
                   });
                 }}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               >
                 <option value="">All Categories</option>
                 {categories.map((cat) => (
@@ -204,7 +204,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
 
             {/* Status Filter */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Status
               </label>
               <select
@@ -215,7 +215,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
                     status: e.target.value ? (e.target.value as EventStatus) : undefined
                   });
                 }}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               >
                 <option value="">All Statuses</option>
                 {statuses.map((status) => (
@@ -229,7 +229,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
             {/* Location Filter */}
             {availableLocations.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   <MapPin className="h-4 w-4 inline mr-1" />
                   Location
                 </label>
@@ -241,7 +241,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
                       location: e.target.value || undefined
                     });
                   }}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 >
                   <option value="">All Locations</option>
                   {availableLocations.map((loc) => (
@@ -256,7 +256,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
             {/* Creator Filter */}
             {availableCreators.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   <User className="h-4 w-4 inline mr-1" />
                   Creator
                 </label>
@@ -268,7 +268,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
                       creatorId: e.target.value || undefined
                     });
                   }}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 >
                   <option value="">All Creators</option>
                   {availableCreators.map((creator) => (
@@ -284,7 +284,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="w-full px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
+                className="w-full px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-md transition-colors"
               >
                 Clear All Filters
               </button>
