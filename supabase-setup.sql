@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS public.events (
   location TEXT,
   poster_url TEXT,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'cancelled')),
-  category TEXT CHECK (category IN ('meeting', 'workshop', 'social', 'training', 'community', 'celebration', 'other')),
+  category TEXT,
   tags TEXT[] DEFAULT '{}',
   recurrence_type TEXT DEFAULT 'none' CHECK (recurrence_type IN ('none', 'daily', 'weekly', 'monthly', 'yearly', 'custom')),
   recurrence_interval INTEGER,
@@ -98,6 +98,14 @@ CREATE TABLE IF NOT EXISTS public.rsvps (
   UNIQUE(event_id, user_id)
 );
 
+-- Таблица категорий событий
+CREATE TABLE IF NOT EXISTS public.event_categories (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_by UUID REFERENCES public.users(id) ON DELETE SET NULL
+);
+
 -- ============================================
 -- 3. ИНДЕКСЫ (INDEXES) для производительности
 -- ============================================
@@ -126,6 +134,10 @@ CREATE INDEX IF NOT EXISTS idx_history_timestamp ON public.event_history(timesta
 CREATE INDEX IF NOT EXISTS idx_rsvps_event ON public.rsvps(event_id);
 CREATE INDEX IF NOT EXISTS idx_rsvps_user ON public.rsvps(user_id);
 CREATE INDEX IF NOT EXISTS idx_rsvps_status ON public.rsvps(status);
+
+-- Индексы для таблицы event_categories
+CREATE INDEX IF NOT EXISTS idx_categories_name ON public.event_categories(name);
+CREATE INDEX IF NOT EXISTS idx_categories_created_at ON public.event_categories(created_at);
 
 -- ============================================
 -- 4. ТРИГГЕРЫ (TRIGGERS) для автоматического обновления
@@ -172,6 +184,7 @@ ALTER TABLE public.event_attachments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rsvps ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.event_categories ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
 -- ПОЛИТИКИ ДЛЯ ТАБЛИЦЫ users
@@ -441,6 +454,33 @@ CREATE POLICY "Users can delete own RSVP"
   USING (auth.uid() = user_id);
 
 -- ============================================
+-- ПОЛИТИКИ ДЛЯ ТАБЛИЦЫ event_categories
+-- ============================================
+
+-- Все авторизованные пользователи могут видеть категории
+DROP POLICY IF EXISTS "Categories are viewable by everyone" ON public.event_categories;
+CREATE POLICY "Categories are viewable by everyone"
+  ON public.event_categories FOR SELECT
+  USING (true);
+
+-- Все авторизованные пользователи могут создавать категории
+DROP POLICY IF EXISTS "Authenticated users can create categories" ON public.event_categories;
+CREATE POLICY "Authenticated users can create categories"
+  ON public.event_categories FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+-- Только админы могут удалять категории
+DROP POLICY IF EXISTS "Admins can delete categories" ON public.event_categories;
+CREATE POLICY "Admins can delete categories"
+  ON public.event_categories FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.users
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- ============================================
 -- 6. ФУНКЦИИ (FUNCTIONS) для удобства работы
 -- ============================================
 
@@ -577,10 +617,36 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 */
 
 -- ============================================
+-- 10. МИГРАЦИЯ: Заполнение существующих категорий
+-- ============================================
+
+-- Заполняем таблицу event_categories существующими категориями
+-- (выполняется только если таблица пуста)
+INSERT INTO public.event_categories (name)
+SELECT DISTINCT category
+FROM public.events
+WHERE category IS NOT NULL
+  AND category NOT IN (SELECT name FROM public.event_categories)
+ON CONFLICT (name) DO NOTHING;
+
+-- Если таблица все еще пуста, добавляем стандартные категории
+INSERT INTO public.event_categories (name)
+VALUES 
+  ('meeting'),
+  ('workshop'),
+  ('social'),
+  ('training'),
+  ('community'),
+  ('celebration'),
+  ('other')
+ON CONFLICT (name) DO NOTHING;
+
+-- ============================================
 -- ГОТОВО!
 -- ============================================
 -- База данных настроена. Теперь вы можете:
 -- 1. Создать пользователей через Supabase Auth
 -- 2. Использовать API для работы с событиями
 -- 3. Настроить переменные окружения в приложении
+-- 4. Использовать категории из таблицы event_categories
 -- ============================================

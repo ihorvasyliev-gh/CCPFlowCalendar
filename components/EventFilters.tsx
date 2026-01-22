@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Filter, X, Calendar, MapPin, User, Tag } from 'lucide-react';
-import { EventFilters, EventCategory, EventStatus } from '../types';
+import { EventFilters, EventCategory, EventStatus, EventCategoryItem } from '../types';
+import { getCategories } from '../services/categoryService';
 
 interface EventFiltersProps {
   filters: EventFilters;
@@ -18,16 +19,22 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
   onClose
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [categories, setCategories] = useState<EventCategoryItem[]>([]);
 
-  const categories: { value: EventCategory; label: string }[] = [
-    { value: 'meeting', label: 'Meeting' },
-    { value: 'workshop', label: 'Workshop' },
-    { value: 'social', label: 'Social' },
-    { value: 'training', label: 'Training' },
-    { value: 'community', label: 'Community' },
-    { value: 'celebration', label: 'Celebration' },
-    { value: 'other', label: 'Other' }
-  ];
+  useEffect(() => {
+    getCategories()
+      .then(setCategories)
+      .catch(err => {
+        console.error('Failed to load categories:', err);
+        // Fallback to empty array
+        setCategories([]);
+      });
+  }, []);
+
+  const categoryOptions: { value: EventCategory; label: string }[] = categories.map(cat => ({
+    value: cat.name,
+    label: cat.name.charAt(0).toUpperCase() + cat.name.slice(1)
+  }));
 
   const statuses: { value: EventStatus; label: string }[] = [
     { value: 'published', label: 'Published' },
@@ -194,7 +201,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
                 className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               >
                 <option value="">All Categories</option>
-                {categories.map((cat) => (
+                {categoryOptions.map((cat) => (
                   <option key={cat.value} value={cat.value}>
                     {cat.label}
                   </option>

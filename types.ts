@@ -12,14 +12,14 @@ export interface User {
 
 export type EventStatus = 'draft' | 'published' | 'cancelled';
 
-export type EventCategory = 
-  | 'meeting'
-  | 'workshop'
-  | 'social'
-  | 'training'
-  | 'community'
-  | 'celebration'
-  | 'other';
+export type EventCategory = string;
+
+export interface EventCategoryItem {
+  id: string;
+  name: string;
+  createdAt: Date;
+  createdBy?: string;
+}
 
 export type RecurrenceType = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
 

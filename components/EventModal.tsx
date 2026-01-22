@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Event, UserRole, EventCategory, EventStatus, Attachment, EventComment, EventHistoryEntry } from '../types';
-import { X, MapPin, Clock, Calendar as CalendarIcon, Download, Upload, Loader2, Pencil, Tag, Users, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { Event, UserRole, EventCategory, EventStatus, Attachment, EventComment, EventHistoryEntry, EventCategoryItem } from '../types';
+import { X, MapPin, Clock, Calendar as CalendarIcon, Download, Upload, Loader2, Pencil, Tag, Users, CheckCircle, XCircle, Trash2, Plus } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/date';
 import { uploadPosterToR2, uploadAttachment, addComment, deleteComment, fetchEventDetails } from '../services/eventService';
 import { rsvpToEvent, cancelRsvp, hasUserRsvped } from '../services/rsvpService';
+import { getCategories, createCategory } from '../services/categoryService';
 import EventComments from './EventComments';
 import EventHistory from './EventHistory';
 import { validateEvent } from '../utils/validation';
@@ -49,6 +50,12 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
   const [attendees, setAttendees] = useState<string[]>([]);
 
   const [userHasRsvped, setUserHasRsvped] = useState(false);
+
+  // Categories State
+  const [categories, setCategories] = useState<EventCategoryItem[]>([]);
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
 
   // Recurrence State
   const [recurrenceType, setRecurrenceType] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('none');
@@ -157,7 +164,41 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
     }
   }, [isOpen, event, currentUserId]);
 
+  // Load categories when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      getCategories()
+        .then(setCategories)
+        .catch(err => {
+          console.error('Failed to load categories:', err);
+          // Fallback to empty array
+          setCategories([]);
+        });
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
+      alert('Please enter a category name');
+      return;
+    }
+
+    setIsCreatingCategory(true);
+    try {
+      const newCategory = await createCategory(newCategoryName.trim(), currentUserId);
+      setCategories(prev => [...prev, newCategory].sort((a, b) => a.name.localeCompare(b.name)));
+      setCategory(newCategory.name);
+      setNewCategoryName('');
+      setShowAddCategoryModal(false);
+    } catch (err: any) {
+      console.error('Failed to create category:', err);
+      alert(err.message || 'Failed to create category');
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -573,19 +614,27 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className={`grid gap-4 ${role === UserRole.ADMIN ? 'grid-cols-[1fr_auto_1fr]' : 'grid-cols-[1fr_auto]'}`}>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Category</label>
                     <select value={category} onChange={(e) => setCategory(e.target.value as EventCategory | '')} className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all">
                       <option value="">Select...</option>
-                      <option value="meeting">Meeting</option>
-                      <option value="workshop">Workshop</option>
-                      <option value="social">Social</option>
-                      <option value="training">Training</option>
-                      <option value="community">Community</option>
-                      <option value="celebration">Celebration</option>
-                      <option value="other">Other</option>
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={cat.name}>
+                          {cat.name.charAt(0).toUpperCase() + cat.name.slice(1)}
+                        </option>
+                      ))}
                     </select>
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCategoryModal(true)}
+                      className="p-2 rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border transition-all focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                      title="Add new category"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
                   </div>
                   {role === UserRole.ADMIN && (
                     <div>
@@ -669,6 +718,62 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
               </form>
             )}
           </div>
+
+          {/* Add Category Modal */}
+          {showAddCategoryModal && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowAddCategoryModal(false)}>
+              <div className={`relative rounded-xl shadow-xl border border-white/20 w-full max-w-md mx-4 ${theme === 'dark' ? 'glass-panel-dark' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+                <div className="px-6 py-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-800">
+                  <h3 className={`text-lg font-semibold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                    Add New Category
+                  </h3>
+                  <button onClick={() => setShowAddCategoryModal(false)} className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-300 transition-colors focus:outline-none">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="px-6 py-6">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Category Name</label>
+                    <input
+                      type="text"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddCategory();
+                        }
+                      }}
+                      className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium placeholder-slate-400"
+                      placeholder="Enter category name"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-800/50 px-6 py-4 flex flex-row-reverse gap-3 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={handleAddCategory}
+                    disabled={isCreatingCategory || !newCategoryName.trim()}
+                    className="inline-flex justify-center rounded-lg px-5 py-2 bg-slate-900 text-white font-medium hover:bg-slate-800 shadow-sm transition-all disabled:opacity-50 text-sm"
+                  >
+                    {isCreatingCategory ? <Loader2 className="animate-spin h-4 w-4" /> : 'Add Category'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddCategoryModal(false);
+                      setNewCategoryName('');
+                    }}
+                    disabled={isCreatingCategory}
+                    className="inline-flex justify-center rounded-lg px-5 py-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium hover:bg-slate-50 border border-slate-200 dark:border-slate-600 transition-all text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Footer */}
           <div className="bg-slate-50 dark:bg-slate-800/50 px-6 py-4 flex flex-row-reverse gap-3 border-t border-slate-100 dark:border-slate-800">
