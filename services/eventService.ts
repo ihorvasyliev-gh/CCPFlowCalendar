@@ -495,7 +495,7 @@ export const deleteEvent = async (id: string): Promise<void> => {
   }
 };
 
-export const addComment = async (eventId: string, userId: string, userName: string, content: string): Promise<Event> => {
+export const addComment = async (eventId: string, userId: string, userName: string, content: string): Promise<EventComment> => {
   // Проверяем, существует ли событие
   const { data: eventData, error: fetchError } = await supabase
     .from('events')
@@ -524,17 +524,25 @@ export const addComment = async (eventId: string, userId: string, userName: stri
     throw new Error(commentError?.message || 'Failed to add comment');
   }
 
-  // Получаем обновленное событие со всеми данными
-  const { data: updatedEventData, error: eventFetchError } = await supabase
-    .from('events')
-    .select('*')
-    .eq('id', eventId)
-    .single();
+  // OPTIMIZATION: Return only the new comment instead of refetching the whole event
+  return {
+    id: commentData.id,
+    eventId: commentData.event_id,
+    userId: commentData.user_id,
+    userName: commentData.user_name,
+    content: commentData.content,
+    createdAt: new Date(commentData.created_at)
+  };
+};
 
-  if (eventFetchError || !updatedEventData) {
-    throw new Error('Failed to fetch updated event');
+export const deleteComment = async (commentId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('event_comments')
+    .delete()
+    .eq('id', commentId);
+
+  if (error) {
+    console.error('Error deleting comment:', error);
+    throw new Error(error.message || 'Failed to delete comment');
   }
-
-  const updatedEvent = await mapSupabaseEventToEvent(updatedEventData);
-  return updatedEvent;
 };

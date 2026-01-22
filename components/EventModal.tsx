@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Event, UserRole, EventCategory, EventStatus, Attachment, EventComment, EventHistoryEntry } from '../types';
 import { X, MapPin, Clock, Calendar as CalendarIcon, Download, Upload, Loader2, Pencil, Tag, Users, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/date';
-import { uploadPosterToR2, uploadAttachment, addComment } from '../services/eventService';
+import { uploadPosterToR2, uploadAttachment, addComment, deleteComment } from '../services/eventService';
 import { rsvpToEvent, cancelRsvp, hasUserRsvped } from '../services/rsvpService';
 import EventComments from './EventComments';
 import EventHistory from './EventHistory';
@@ -299,13 +299,35 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
   const handleAddComment = async (content: string) => {
     if (!event) return;
     try {
-      const updatedEvent = await addComment(event.id, currentUserId, currentUserName, content);
+      const newComment = await addComment(event.id, currentUserId, currentUserName, content);
+      setComments(prev => [...prev, newComment]);
+      // Update the event object if needed for the parent, or just trust the local state for now
+      // If we really need to update parent state, we'd need to construct a partial event update
       if (onEventUpdate) {
+        // Construct a partial update or just trigger a refresh if critical
+        // For now, we are optimizing for speed so we just update local state
+        // But to keep consistency we might want to tell parent current comment count
+        const updatedEvent = { ...event, comments: [...(event.comments || []), newComment] };
         onEventUpdate(updatedEvent);
       }
     } catch (err) {
       console.error('Failed to add comment', err);
       throw err;
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm('Are you sure you want to delete this comment?')) return;
+    try {
+      await deleteComment(commentId);
+      setComments(prev => prev.filter(c => c.id !== commentId));
+      if (onEventUpdate && event) {
+        const updatedEvent = { ...event, comments: (event.comments || []).filter(c => c.id !== commentId) };
+        onEventUpdate(updatedEvent);
+      }
+    } catch (error) {
+      console.error('Failed to delete comment', error);
+      alert('Failed to delete comment');
     }
   };
 
@@ -472,7 +494,13 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
                   </div>
                 )}
 
-                <EventComments comments={comments} currentUserId={currentUserId} currentUserName={currentUserName} onAddComment={handleAddComment} />
+                <EventComments
+                  comments={comments}
+                  currentUserId={currentUserId}
+                  currentUserName={currentUserName}
+                  onAddComment={handleAddComment}
+                  onDeleteComment={handleDeleteComment}
+                />
                 {history.length > 0 && <EventHistory history={history} />}
               </div>
             ) : (

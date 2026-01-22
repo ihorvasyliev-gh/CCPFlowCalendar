@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageCircle, Send, User } from 'lucide-react';
+import { MessageCircle, Send, User, Trash2 } from 'lucide-react';
 import { EventComment } from '../types';
 
 interface EventCommentsProps {
@@ -7,13 +7,15 @@ interface EventCommentsProps {
   currentUserId: string;
   currentUserName: string;
   onAddComment: (content: string) => Promise<void>;
+  onDeleteComment?: (commentId: string) => Promise<void>;
 }
 
 const EventComments: React.FC<EventCommentsProps> = ({
   comments,
   currentUserId,
   currentUserName,
-  onAddComment
+  onAddComment,
+  onDeleteComment
 }) => {
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,6 +64,15 @@ const EventComments: React.FC<EventCommentsProps> = ({
                 </div>
                 <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{comment.content}</p>
               </div>
+              {onDeleteComment && comment.userId === currentUserId && (
+                <button
+                  onClick={() => onDeleteComment(comment.id)}
+                  className="p-1 text-gray-400 hover:text-red-600 rounded-full transition-colors"
+                  title="Delete comment"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
             </div>
           ))
         )}
