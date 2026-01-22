@@ -152,7 +152,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick }) => 
 
                       return (
                         <div
-                          key={ev.id}
+                          key={ev.instanceKey ?? ev.id}
                           onClick={(e) => { e.stopPropagation(); onEventClick(ev); }}
                           className={`w-full text-left ${colorClass} border text-[10px] sm:text-xs px-2 py-1.5 rounded-lg truncate font-medium transition-all hover:brightness-95 ${statusClass}`}
                           title={ev.title}
@@ -176,7 +176,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick }) => 
             <div className="p-12 text-center text-slate-400 dark:text-slate-500">No upcoming events found for this month.</div>
           ) : (
             listViewEvents.map(event => (
-              <div key={event.id} onClick={() => onEventClick(event)} className="p-6 hover:bg-white/50 dark:hover:bg-slate-800/50 cursor-pointer flex items-start gap-6 transition-all group border-l-4 border-transparent hover:border-brand-500">
+              <div key={event.instanceKey ?? event.id} onClick={() => onEventClick(event)} className="p-6 hover:bg-white/50 dark:hover:bg-slate-800/50 cursor-pointer flex items-start gap-6 transition-all group border-l-4 border-transparent hover:border-brand-500">
                 {/* Date Badge */}
                 <div className={`flex-shrink-0 w-20 text-center rounded-2xl p-3 transition-transform group-hover:scale-105 shadow-sm ${theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-white text-slate-800'}`}>
                   <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">{event.date.toLocaleString('default', { month: 'short' })}</div>

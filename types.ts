@@ -61,6 +61,8 @@ export interface EventHistoryEntry {
 
 export interface Event {
   id: string;
+  /** Unique key for recurring instances in UI (id_timestamp). Use for React keys; always use `id` for API. */
+  instanceKey?: string;
   title: string;
   description: string;
   date: Date;

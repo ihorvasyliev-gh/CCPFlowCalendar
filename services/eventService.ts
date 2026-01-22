@@ -290,7 +290,14 @@ export const createEvent = async (eventData: Omit<Event, 'id' | 'createdAt'>, us
   return createdEvent;
 };
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const updateEvent = async (id: string, eventData: Omit<Event, 'id' | 'createdAt'>, userId: string, userName: string): Promise<Event> => {
+  if (!id || typeof id !== 'string' || !UUID_REGEX.test(id)) {
+    console.error('updateEvent: invalid or non-UUID id', { id });
+    throw new Error('Invalid event ID. Please close and reopen the event.');
+  }
+
   // Сначала получаем старое событие для отслеживания изменений
   const { data: oldEventData, error: fetchError } = await supabase
     .from('events')

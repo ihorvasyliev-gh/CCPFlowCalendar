@@ -54,14 +54,13 @@ export const expandRecurringEvents = (events: Event[], rangeStart: Date, rangeEn
 
       // If the instance is within the range, add it
       if (currentInstanceDate >= rangeStart) {
-        // Clone the event and set the new date
-        // Create a unique ID for the instance to avoid key collisions in React
-        const instanceId = `${event.id}_${currentInstanceDate.getTime()}`;
+        // Clone the event and set the new date. Keep id as real UUID for API (update/delete);
+        // use instanceKey only for React keys to avoid duplicates when same event repeats.
+        const instanceKey = `${event.id}_${currentInstanceDate.getTime()}`;
         instances.push({
           ...event,
-          id: instanceId,
+          instanceKey,
           date: new Date(currentInstanceDate),
-          // We might want to mark it as an instance if we need UI distinctness
         });
       }
 
