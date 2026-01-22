@@ -38,8 +38,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
 
   const statuses: { value: EventStatus; label: string }[] = [
     { value: 'published', label: 'Published' },
-    { value: 'draft', label: 'Draft' },
-    { value: 'cancelled', label: 'Cancelled' }
+    { value: 'draft', label: 'Draft' }
   ];
 
   const quickDateFilters = [

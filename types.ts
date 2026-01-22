@@ -10,7 +10,7 @@ export interface User {
   role: UserRole;
 }
 
-export type EventStatus = 'draft' | 'published' | 'cancelled';
+export type EventStatus = 'draft' | 'published';
 
 export type EventCategory = string;
 

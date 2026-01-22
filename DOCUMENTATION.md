@@ -150,7 +150,7 @@ ccp-event-calendar/
 - Загрузка постеров и вложений
 - Настройка повторяющихся событий (recurrence)
 - Включение/выключение RSVP
-- Управление статусом (draft/published/cancelled)
+- Управление статусом (draft/published)
 - Просмотр комментариев и истории изменений
 - Удаление события (только для создателя или админа)
 
@@ -170,7 +170,7 @@ ccp-event-calendar/
 
 **Фильтры:**
 - Категория (meeting, workshop, social, training, community, celebration, other)
-- Статус (draft, published, cancelled)
+- Статус (draft, published)
 - Локация
 - Создатель
 - Теги
@@ -587,7 +587,7 @@ App (ErrorBoundary)
 - `User` — пользователь
 - `UserRole` — роли пользователей (staff, admin)
 - `Event` — событие
-- `EventStatus` — статусы события (draft, published, cancelled)
+- `EventStatus` — статусы события (draft, published)
 - `EventCategory` — категории событий
 - `RecurrenceRule` — правило повторения
 - `Attachment` — вложение
@@ -755,7 +755,7 @@ User → EventModal → eventService.updateEvent()
 | `date` | TIMESTAMP | Дата и время события |
 | `location` | TEXT | Локация |
 | `poster_url` | TEXT | URL постера |
-| `status` | TEXT | Статус: 'draft', 'published', 'cancelled' |
+| `status` | TEXT | Статус: 'draft', 'published' |
 | `category` | TEXT | Категория |
 | `tags` | TEXT[] | Массив тегов |
 | `recurrence_type` | TEXT | Тип повторения |
@@ -870,7 +870,7 @@ User → EventModal → eventService.updateEvent()
 - **Создание:** Форма с полями (название, описание, дата, локация, категория, теги)
 - **Редактирование:** Изменение существующих событий (только создатель/админ)
 - **Удаление:** Удаление событий (только создатель/админ)
-- **Статусы:** draft (черновик), published (опубликовано), cancelled (отменено)
+- **Статусы:** draft (черновик), published (опубликовано). Черновики видят только админы.
 
 ### 3. Повторяющиеся события
 

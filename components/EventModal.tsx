@@ -491,7 +491,6 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
                 {/* Header Info */}
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-2 flex-wrap">
-                    {event.status === 'cancelled' && <span className="px-2 py-0.5 text-[10px] font-bold bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-300 rounded-full border border-red-100 dark:border-red-800">Cancelled</span>}
                     {event.status === 'draft' && <span className="px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 rounded-full">Draft</span>}
                     {event.category && (
                       <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${event.category === 'meeting' ? 'bg-blue-50 text-blue-700' :
@@ -504,7 +503,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
                   </div>
 
                   <div className="flex justify-between items-start gap-4">
-                    <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'} ${event.status === 'cancelled' ? 'line-through opacity-60' : ''}`}>
+                    <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
                       {event.title}
                     </h2>
                     {role === UserRole.ADMIN && (
@@ -688,7 +687,6 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
                       <select value={status} onChange={(e) => setStatus(e.target.value as EventStatus)} className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all">
                         <option value="draft">Draft</option>
                         <option value="published">Published</option>
-                        <option value="cancelled">Cancelled</option>
                       </select>
                     </div>
                   )}

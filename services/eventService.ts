@@ -370,9 +370,7 @@ export const updateEvent = async (id: string, eventData: Omit<Event, 'id' | 'cre
   }
 
   // Создаем запись в истории изменений
-  const action = eventData.status === 'cancelled' && oldEventData.status !== 'cancelled'
-    ? 'status_changed'
-    : 'updated';
+  const action = 'updated';
 
   const { error: historyError } = await supabase
     .from('event_history')

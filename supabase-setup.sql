@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS public.events (
   date TIMESTAMP WITH TIME ZONE NOT NULL,
   location TEXT,
   poster_url TEXT,
-  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'cancelled')),
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
   category TEXT,
   tags TEXT[] DEFAULT '{}',
   recurrence_type TEXT DEFAULT 'none' CHECK (recurrence_type IN ('none', 'daily', 'weekly', 'monthly', 'yearly', 'custom')),

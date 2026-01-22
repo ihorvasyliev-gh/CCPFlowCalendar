@@ -20,10 +20,6 @@ export const detectConflicts = (newEvent: Partial<Event>, existingEvents: Event[
       return false;
     }
 
-    // Skip cancelled events
-    if (event.status === 'cancelled') {
-      return false;
-    }
 
     const eventStart = new Date(event.date);
     const eventEnd = new Date(eventStart);

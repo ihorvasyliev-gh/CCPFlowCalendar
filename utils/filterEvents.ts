@@ -1,6 +1,6 @@
-import { Event, EventFilters } from '../types';
+import { Event, EventFilters, UserRole } from '../types';
 
-export const filterEvents = (events: Event[], filters: EventFilters): Event[] => {
+export const filterEvents = (events: Event[], filters: EventFilters, userRole?: UserRole): Event[] => {
   let filtered = [...events];
 
   // Search filter
@@ -24,7 +24,12 @@ export const filterEvents = (events: Event[], filters: EventFilters): Event[] =>
     filtered = filtered.filter(event => event.status === filters.status);
   } else {
     // By default, show only published events (unless status filter is explicitly set)
-    filtered = filtered.filter(event => event.status === 'published' || event.status === undefined);
+    // Admins can see drafts, but non-admins can only see published events
+    if (userRole === UserRole.ADMIN) {
+      filtered = filtered.filter(event => event.status === 'published' || event.status === 'draft' || event.status === undefined);
+    } else {
+      filtered = filtered.filter(event => event.status === 'published' || event.status === undefined);
+    }
   }
 
   // Date range filter

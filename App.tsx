@@ -503,8 +503,8 @@ const AppContent: React.FC = () => {
 
   // Filtered events
   const filteredEvents = useMemo(() => {
-    return filterEvents(events, { ...filters, search: searchQuery });
-  }, [events, filters, searchQuery]);
+    return filterEvents(events, { ...filters, search: searchQuery }, user?.role);
+  }, [events, filters, searchQuery, user?.role]);
 
   // Extract unique values for filters
   const availableLocations = useMemo(() => {

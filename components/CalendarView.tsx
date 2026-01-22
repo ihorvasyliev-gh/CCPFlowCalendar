@@ -199,7 +199,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
                   <div className="space-y-1">
                     {dayEvents.map(ev => {
                       const colorClass = getCategoryColor(ev.category);
-                      const statusClass = ev.status === 'cancelled' ? 'line-through opacity-50' : ev.status === 'draft' ? 'opacity-70 dashed-border' : '';
+                      const statusClass = ev.status === 'draft' ? 'opacity-70 dashed-border' : '';
 
                       return (
                         <div
@@ -237,16 +237,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
                 <div className="flex-grow min-w-0 pt-0.5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <h3 className={`text-sm font-semibold text-slate-900 dark:text-white truncate ${event.status === 'cancelled' ? 'line-through opacity-50' : ''}`}>
+                      <h3 className={`text-sm font-semibold text-slate-900 dark:text-white truncate`}>
                         {event.title}
                       </h3>
                       {event.description && <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{event.description}</p>}
                     </div>
-                    {event.status === 'cancelled' && (
-                      <span className="px-2 py-0.5 text-[10px] font-bold bg-red-100 text-red-600 rounded-full">
-                        Cancelled
-                      </span>
-                    )}
                   </div>
 
                   <div className="flex items-center flex-wrap gap-3 mt-2">
