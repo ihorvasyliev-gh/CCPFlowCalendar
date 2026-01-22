@@ -39,12 +39,14 @@ const AppContent: React.FC = () => {
 
     const initializeSession = async () => {
       try {
+        console.time('Session Initialization');
         // Get initial session
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session && isMounted) {
           console.log('Found existing session, fetching user details...');
-          const currentUser = await getCurrentUser();
+          // Pass user.id to avoid redundant session fetch
+          const currentUser = await getCurrentUser(session.user.id);
           if (isMounted && currentUser) {
             setUser(currentUser);
             console.log('User restored:', currentUser.email);
@@ -55,6 +57,7 @@ const AppContent: React.FC = () => {
       } finally {
         if (isMounted) {
           setIsSessionLoading(false);
+          console.timeEnd('Session Initialization');
         }
       }
     };
@@ -186,8 +189,9 @@ const AppContent: React.FC = () => {
   // Render Logic
   if (isSessionLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600 mb-4"></div>
+        <p className="text-slate-500 font-medium animate-pulse">Loading application...</p>
       </div>
     );
   }

@@ -113,17 +113,17 @@ export const signUp = async (
     return mapSupabaseUserToUser(userData);
   } catch (error: any) {
     console.error('Sign up error:', error);
-    
+
     // Обрабатываем AbortError отдельно
     if (error?.name === 'AbortError' || error?.message?.includes('aborted') || error?.message?.includes('cancelled')) {
       throw new Error('Request was cancelled. Please try again.');
     }
-    
+
     // Обрабатываем таймауты
     if (error?.message?.includes('timeout')) {
       throw new Error('Request timed out. Please check your connection and try again.');
     }
-    
+
     throw new Error(error.message || 'Registration failed. Please check your connection and try again.');
   }
 };
@@ -142,11 +142,11 @@ export const login = async (email: string, password: string): Promise<User> => {
     if (authError) {
       // Улучшенная обработка ошибок с более понятными сообщениями
       let errorMessage = authError.message || 'Invalid email or password';
-      
+
       // Парсим специфичные ошибки Supabase
       if (authError.status === 400) {
-        if (authError.message?.includes('Invalid login credentials') || 
-            authError.message?.includes('Email not confirmed')) {
+        if (authError.message?.includes('Invalid login credentials') ||
+          authError.message?.includes('Email not confirmed')) {
           errorMessage = 'Invalid email or password. Please check your credentials or confirm your email.';
         } else if (authError.message?.includes('Email not confirmed')) {
           errorMessage = 'Please confirm your email address before signing in. Check your inbox for a confirmation email.';
@@ -158,7 +158,7 @@ export const login = async (email: string, password: string): Promise<User> => {
       } else if (authError.status === 429) {
         errorMessage = 'Too many login attempts. Please wait a moment and try again.';
       }
-      
+
       throw new Error(errorMessage);
     }
 
@@ -195,17 +195,17 @@ export const login = async (email: string, password: string): Promise<User> => {
   } catch (error: any) {
     // Логируем ошибку для отладки
     console.error('Login error:', error);
-    
+
     // Обрабатываем AbortError отдельно
     if (error?.name === 'AbortError' || error?.message?.includes('aborted') || error?.message?.includes('cancelled')) {
       throw new Error('Request was cancelled. Please try again.');
     }
-    
+
     // Если это уже наша ошибка (таймаут или другая обработанная), просто пробрасываем её
     if (error.message && (error.message.includes('timeout') || error.message.includes('Request was cancelled'))) {
       throw error;
     }
-    
+
     // Для других ошибок пробрасываем с понятным сообщением
     throw new Error(error.message || 'Login failed. Please check your connection and try again.');
   }
@@ -220,22 +220,27 @@ export const logout = async (): Promise<void> => {
 };
 
 // Получить текущего пользователя
-export const getCurrentUser = async (): Promise<User | null> => {
+export const getCurrentUser = async (userId?: string): Promise<User | null> => {
   try {
-    const { data: { session }, error: sessionError } = await withTimeout(
-      supabase.auth.getSession(),
-      5000
-    );
-    
-    if (sessionError || !session?.user) {
-      return null;
+    let currentUserId = userId;
+
+    if (!currentUserId) {
+      const { data: { session }, error: sessionError } = await withTimeout(
+        supabase.auth.getSession(),
+        5000
+      );
+
+      if (sessionError || !session?.user) {
+        return null;
+      }
+      currentUserId = session.user.id;
     }
 
     const { data: userData, error } = await withTimeout(
       supabase
         .from('users')
         .select('*')
-        .eq('id', session.user.id)
+        .eq('id', currentUserId)
         .single(),
       5000
     );
