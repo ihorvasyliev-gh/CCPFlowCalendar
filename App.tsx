@@ -16,6 +16,7 @@ import { logout as logoutService, getCurrentUser } from './services/authService'
 import { supabase } from './lib/supabase';
 import { filterEvents } from './utils/filterEvents';
 import { getCachedUser, cacheUser, clearUserCache, hasValidSession } from './utils/sessionCache';
+import { getCachedEvents, cacheEvents, clearEventsCache } from './utils/eventsCache';
 
 const AppContent: React.FC = () => {
   const { showToast } = useToast();
@@ -145,6 +146,7 @@ const AppContent: React.FC = () => {
         setUser(null);
         setEvents([]);
         clearUserCache();
+        clearEventsCache();
         if (!isInitializedRef.current) {
           isInitializedRef.current = true;
           setIsSessionLoading(false);
@@ -158,22 +160,30 @@ const AppContent: React.FC = () => {
     };
   }, []);
 
-  // Initial Load of Events
+  // Initial Load of Events: показываем кэш сразу, затем обновляем в фоне
   useEffect(() => {
-    if (user) {
+    if (!user) return;
+
+    const cached = getCachedEvents();
+    if (cached && cached.length > 0) {
+      setEvents(cached);
+      setLoadingEvents(false);
+    } else {
       setLoadingEvents(true);
-      getEvents()
-        .then(data => {
-          setEvents(data);
-        })
-        .catch(error => {
-          console.error('Error loading events:', error);
-          showToast('Failed to load events', 'error');
-        })
-        .finally(() => {
-          setLoadingEvents(false);
-        });
     }
+
+    getEvents()
+      .then((data) => {
+        setEvents(data);
+        cacheEvents(data);
+      })
+      .catch((error) => {
+        console.error('Error loading events:', error);
+        showToast('Failed to load events', 'error');
+      })
+      .finally(() => {
+        setLoadingEvents(false);
+      });
   }, [user, showToast]);
 
   // Auth Handlers
@@ -185,8 +195,8 @@ const AppContent: React.FC = () => {
 
   const handleLogout = async () => {
     await logoutService();
-    // Кэш уже очищен в logoutService, но на всякий случай
     clearUserCache();
+    clearEventsCache();
     setUser(null);
   };
 
@@ -204,7 +214,11 @@ const AppContent: React.FC = () => {
   const handleSaveEvent = async (eventData: Omit<Event, 'id' | 'createdAt'>) => {
     try {
       const newEvent = await createEvent(eventData, user.id, user.fullName);
-      setEvents(prev => [...prev, newEvent]);
+      setEvents((prev) => {
+        const next = [...prev, newEvent];
+        cacheEvents(next);
+        return next;
+      });
       showToast('Event created successfully', 'success');
     } catch (e) {
       console.error("Error saving event", e);
@@ -216,7 +230,11 @@ const AppContent: React.FC = () => {
   const handleUpdateEvent = async (id: string, eventData: Omit<Event, 'id' | 'createdAt'>) => {
     try {
       const updatedEvent = await updateEvent(id, eventData, user.id, user.fullName);
-      setEvents(prev => prev.map(e => e.id === id ? updatedEvent : e));
+      setEvents((prev) => {
+        const next = prev.map((e) => (e.id === id ? updatedEvent : e));
+        cacheEvents(next);
+        return next;
+      });
       if (selectedEvent?.id === id) {
         setSelectedEvent(updatedEvent);
       }
@@ -312,7 +330,11 @@ const AppContent: React.FC = () => {
         onSave={handleSaveEvent}
         onUpdate={handleUpdateEvent}
         onEventUpdate={(updatedEvent) => {
-          setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+          setEvents((prev) => {
+            const next = prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e));
+            cacheEvents(next);
+            return next;
+          });
           if (selectedEvent?.id === updatedEvent.id) {
             setSelectedEvent(updatedEvent);
           }

@@ -1,33 +1,118 @@
 import { Event, Attachment, EventComment, EventHistoryEntry, RecurrenceRule } from '../types';
 import { supabase } from '../lib/supabase';
 
-// Преобразуем данные из Supabase (snake_case) в TypeScript типы (camelCase)
-const mapSupabaseEventToEvent = async (supabaseEvent: any): Promise<Event> => {
-  // Загружаем связанные данные
-  const [attachmentsResult, commentsResult, historyResult, rsvpsResult] = await Promise.all([
+interface RelatedData {
+  attachmentsByEvent: Record<string, Attachment[]>;
+  commentsByEvent: Record<string, EventComment[]>;
+  historyByEvent: Record<string, EventHistoryEntry[]>;
+  rsvpsByEvent: Record<string, string[]>;
+}
+
+/** Пакетная загрузка связанных данных для списка событий (4 запроса вместо 4×N) */
+const fetchRelatedBatch = async (eventIds: string[]): Promise<RelatedData> => {
+  if (eventIds.length === 0) {
+    return { attachmentsByEvent: {}, commentsByEvent: {}, historyByEvent: {}, rsvpsByEvent: {} };
+  }
+
+  const [attachmentsRes, commentsRes, historyRes, rsvpsRes] = await Promise.all([
     supabase
       .from('event_attachments')
       .select('*')
-      .eq('event_id', supabaseEvent.id)
+      .in('event_id', eventIds)
       .order('uploaded_at', { ascending: true }),
     supabase
       .from('event_comments')
       .select('*')
-      .eq('event_id', supabaseEvent.id)
+      .in('event_id', eventIds)
       .order('created_at', { ascending: true }),
     supabase
       .from('event_history')
       .select('*')
-      .eq('event_id', supabaseEvent.id)
+      .in('event_id', eventIds)
+      .order('timestamp', { ascending: true }),
+    supabase
+      .from('rsvps')
+      .select('event_id, user_id')
+      .in('event_id', eventIds)
+      .eq('status', 'going')
+  ]);
+
+  const attachmentsByEvent: Record<string, Attachment[]> = {};
+  const commentsByEvent: Record<string, EventComment[]> = {};
+  const historyByEvent: Record<string, EventHistoryEntry[]> = {};
+  const rsvpsByEvent: Record<string, string[]> = {};
+
+  for (const att of attachmentsRes.data || []) {
+    const list = attachmentsByEvent[att.event_id] ??= [];
+    list.push({
+      id: att.id,
+      name: att.name,
+      url: att.url,
+      type: att.type,
+      size: att.size,
+      uploadedAt: new Date(att.uploaded_at)
+    });
+  }
+
+  for (const c of commentsRes.data || []) {
+    const list = commentsByEvent[c.event_id] ??= [];
+    list.push({
+      id: c.id,
+      eventId: c.event_id,
+      userId: c.user_id,
+      userName: c.user_name,
+      content: c.content,
+      createdAt: new Date(c.created_at)
+    });
+  }
+
+  for (const h of historyRes.data || []) {
+    const list = historyByEvent[h.event_id] ??= [];
+    list.push({
+      id: h.id,
+      eventId: h.event_id,
+      userId: h.user_id,
+      userName: h.user_name,
+      action: h.action,
+      changes: h.changes || undefined,
+      timestamp: new Date(h.timestamp)
+    });
+  }
+
+  for (const r of rsvpsRes.data || []) {
+    const list = rsvpsByEvent[r.event_id] ??= [];
+    list.push(r.user_id);
+  }
+
+  return { attachmentsByEvent, commentsByEvent, historyByEvent, rsvpsByEvent };
+};
+
+/** Загрузка связанных данных для одного события (create/update/addComment) */
+const fetchRelatedForOne = async (eventId: string): Promise<RelatedData> => {
+  const [attachmentsRes, commentsRes, historyRes, rsvpsRes] = await Promise.all([
+    supabase
+      .from('event_attachments')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('uploaded_at', { ascending: true }),
+    supabase
+      .from('event_comments')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('event_history')
+      .select('*')
+      .eq('event_id', eventId)
       .order('timestamp', { ascending: true }),
     supabase
       .from('rsvps')
       .select('user_id')
-      .eq('event_id', supabaseEvent.id)
+      .eq('event_id', eventId)
       .eq('status', 'going')
   ]);
 
-  const attachments: Attachment[] = (attachmentsResult.data || []).map((att: any) => ({
+  const attachments: Attachment[] = (attachmentsRes.data || []).map((att: any) => ({
     id: att.id,
     name: att.name,
     url: att.url,
@@ -35,29 +120,57 @@ const mapSupabaseEventToEvent = async (supabaseEvent: any): Promise<Event> => {
     size: att.size,
     uploadedAt: new Date(att.uploaded_at)
   }));
-
-  const comments: EventComment[] = (commentsResult.data || []).map((comm: any) => ({
-    id: comm.id,
-    eventId: comm.event_id,
-    userId: comm.user_id,
-    userName: comm.user_name,
-    content: comm.content,
-    createdAt: new Date(comm.created_at)
+  const comments: EventComment[] = (commentsRes.data || []).map((c: any) => ({
+    id: c.id,
+    eventId: c.event_id,
+    userId: c.user_id,
+    userName: c.user_name,
+    content: c.content,
+    createdAt: new Date(c.created_at)
   }));
-
-  const history: EventHistoryEntry[] = (historyResult.data || []).map((hist: any) => ({
-    id: hist.id,
-    eventId: hist.event_id,
-    userId: hist.user_id,
-    userName: hist.user_name,
-    action: hist.action,
-    changes: hist.changes || undefined,
-    timestamp: new Date(hist.timestamp)
+  const history: EventHistoryEntry[] = (historyRes.data || []).map((h: any) => ({
+    id: h.id,
+    eventId: h.event_id,
+    userId: h.user_id,
+    userName: h.user_name,
+    action: h.action,
+    changes: h.changes || undefined,
+    timestamp: new Date(h.timestamp)
   }));
+  const attendees: string[] = (rsvpsRes.data || []).map((r: any) => r.user_id);
 
-  const attendees: string[] = (rsvpsResult.data || []).map((rsvp: any) => rsvp.user_id);
+  return {
+    attachmentsByEvent: { [eventId]: attachments },
+    commentsByEvent: { [eventId]: comments },
+    historyByEvent: { [eventId]: history },
+    rsvpsByEvent: { [eventId]: attendees }
+  };
+};
 
-  // Формируем recurrence rule если есть
+// Преобразуем данные из Supabase (snake_case) в TypeScript типы (camelCase)
+const mapSupabaseEventToEvent = async (
+  supabaseEvent: any,
+  related?: RelatedData
+): Promise<Event> => {
+  const eventId = supabaseEvent.id;
+  let attachments: Attachment[];
+  let comments: EventComment[];
+  let history: EventHistoryEntry[];
+  let attendees: string[];
+
+  if (related) {
+    attachments = related.attachmentsByEvent[eventId] ?? [];
+    comments = related.commentsByEvent[eventId] ?? [];
+    history = related.historyByEvent[eventId] ?? [];
+    attendees = related.rsvpsByEvent[eventId] ?? [];
+  } else {
+    const one = await fetchRelatedForOne(eventId);
+    attachments = one.attachmentsByEvent[eventId] ?? [];
+    comments = one.commentsByEvent[eventId] ?? [];
+    history = one.historyByEvent[eventId] ?? [];
+    attendees = one.rsvpsByEvent[eventId] ?? [];
+  }
+
   let recurrence: RecurrenceRule | undefined;
   if (supabaseEvent.recurrence_type && supabaseEvent.recurrence_type !== 'none') {
     recurrence = {
@@ -69,7 +182,6 @@ const mapSupabaseEventToEvent = async (supabaseEvent: any): Promise<Event> => {
     };
   }
 
-  // Получаем posterUrl из первого attachment типа image, если есть
   const posterAttachment = attachments.find(att => att.type === 'image');
   const posterUrl = posterAttachment?.url || supabaseEvent.poster_url || undefined;
 
@@ -110,8 +222,12 @@ export const getEvents = async (): Promise<Event[]> => {
     return [];
   }
 
-  // Преобразуем все события
-  const events = await Promise.all(eventsData.map(mapSupabaseEventToEvent));
+  const eventIds = eventsData.map((e: any) => e.id);
+  const related = await fetchRelatedBatch(eventIds);
+
+  const events = await Promise.all(
+    eventsData.map((e: any) => mapSupabaseEventToEvent(e, related))
+  );
   return events;
 };
 
