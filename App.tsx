@@ -15,6 +15,7 @@ import { getEvents, createEvent, updateEvent } from './services/eventService';
 import { logout as logoutService, getCurrentUser } from './services/authService';
 import { supabase } from './lib/supabase';
 import { filterEvents } from './utils/filterEvents';
+import { getCachedUser, cacheUser, clearUserCache, hasValidSession } from './utils/sessionCache';
 
 const AppContent: React.FC = () => {
   const { showToast } = useToast();
@@ -33,7 +34,7 @@ const AppContent: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
-  // Session restoration - get session immediately, then subscribe to changes
+  // Session restoration - полностью переписанный механизм
   const userIdRef = React.useRef<string | null>(null);
   const isInitializedRef = React.useRef(false);
 
@@ -41,76 +42,112 @@ const AppContent: React.FC = () => {
     let isMounted = true;
     const initStartTime = performance.now();
 
-    const fetchUserProfile = async (uid: string): Promise<boolean> => {
-      // Skip if already loaded this user
-      if (userIdRef.current === uid) {
-        return true;
-      }
-
+    // Функция для загрузки профиля пользователя с сервера
+    const fetchUserProfileFromServer = async (uid: string): Promise<User | null> => {
       try {
-        console.log('Fetching user details for:', uid);
         const currentUser = await getCurrentUser(uid);
-
-        if (isMounted && currentUser) {
+        if (currentUser && isMounted) {
           userIdRef.current = currentUser.id;
           setUser(currentUser);
-          console.log('User restored:', currentUser.email);
-          return true;
+          return currentUser;
         }
-        return false;
+        return null;
       } catch (error) {
-        console.error('Error fetching user profile:', error);
-        return false;
+        console.error('Error fetching user profile from server:', error);
+        return null;
       }
     };
 
-    const finishInitialization = () => {
-      if (!isInitializedRef.current && isMounted) {
-        isInitializedRef.current = true;
-        setIsSessionLoading(false);
-        console.log(`Session initialized in ${(performance.now() - initStartTime).toFixed(0)}ms`);
-      }
-    };
-
-    // Get session immediately from localStorage (synchronous, no network delay)
-    const initializeSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+    // Функция для синхронного восстановления сессии
+    const restoreSessionSync = (): void => {
+      // Шаг 1: Пытаемся восстановить пользователя из кэша (синхронно, мгновенно)
+      const cachedUser = getCachedUser();
+      if (cachedUser) {
+        // Пользователь найден в кэше - восстанавливаем мгновенно
+        userIdRef.current = cachedUser.id;
+        setUser(cachedUser);
         
+        // Завершаем инициализацию сразу (мгновенно!)
+        if (!isInitializedRef.current && isMounted) {
+          isInitializedRef.current = true;
+          setIsSessionLoading(false);
+          const elapsed = performance.now() - initStartTime;
+          console.log(`Session initialized in ${elapsed.toFixed(0)}ms (from cache)`);
+          console.log('User restored from cache:', cachedUser.email);
+        }
+
+        // В фоне проверяем и обновляем данные пользователя с сервера
+        supabase.auth.getSession().then(({ data: { session }, error }) => {
+          if (!isMounted || error || !session) {
+            // Сессия невалидна - очищаем кэш и состояние
+            if (isMounted) {
+              clearUserCache();
+              setUser(null);
+            }
+            return;
+          }
+          
+          // Обновляем данные пользователя в фоне (не блокируем UI)
+          fetchUserProfileFromServer(session.user.id).then((freshUser) => {
+            if (freshUser && isMounted) {
+              console.log('User data refreshed from server:', freshUser.email);
+            }
+          });
+        });
+        return;
+      }
+
+      // Шаг 2: Кэша нет - проверяем сессию через Supabase (асинхронно)
+      supabase.auth.getSession().then(({ data: { session }, error }) => {
         if (!isMounted) return;
 
         if (session && !error) {
-          // Session exists, restore user immediately
-          await fetchUserProfile(session.user.id);
+          // Сессия есть - загружаем пользователя с сервера
+          fetchUserProfileFromServer(session.user.id).then((user) => {
+            if (!isInitializedRef.current && isMounted) {
+              isInitializedRef.current = true;
+              setIsSessionLoading(false);
+              const elapsed = performance.now() - initStartTime;
+              console.log(`Session initialized in ${elapsed.toFixed(0)}ms (from server)`);
+            }
+          });
+        } else {
+          // Нет сессии или ошибка - завершаем инициализацию
+          if (!isInitializedRef.current && isMounted) {
+            isInitializedRef.current = true;
+            setIsSessionLoading(false);
+            const elapsed = performance.now() - initStartTime;
+            console.log(`Session initialized in ${elapsed.toFixed(0)}ms (no session)`);
+          }
         }
-        
-        // Finish initialization regardless of whether session exists
-        finishInitialization();
-      } catch (error) {
-        console.error('Error initializing session:', error);
-        finishInitialization();
-      }
+      });
     };
 
-    // Initialize session immediately
-    initializeSession();
+    // Запускаем синхронное восстановление сессии
+    restoreSessionSync();
 
-    // Subscribe to auth state changes for future updates
+    // Подписываемся на изменения auth state для будущих обновлений
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state change:', event);
       if (!isMounted) return;
 
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        // User just logged in or token was refreshed
+        // Пользователь вошел или токен обновлен
         if (session) {
-          await fetchUserProfile(session.user.id);
+          const user = await fetchUserProfileFromServer(session.user.id);
+          if (user && !isInitializedRef.current) {
+            isInitializedRef.current = true;
+            setIsSessionLoading(false);
+          }
         }
       } else if (event === 'SIGNED_OUT') {
+        // Пользователь вышел
         userIdRef.current = null;
         setUser(null);
         setEvents([]);
+        clearUserCache();
         if (!isInitializedRef.current) {
-          finishInitialization();
+          isInitializedRef.current = true;
+          setIsSessionLoading(false);
         }
       }
     });
@@ -141,11 +178,15 @@ const AppContent: React.FC = () => {
 
   // Auth Handlers
   const handleLogin = (loggedInUser: User) => {
+    // Кэшируем пользователя при логине
+    cacheUser(loggedInUser);
     setUser(loggedInUser);
   };
 
   const handleLogout = async () => {
     await logoutService();
+    // Кэш уже очищен в logoutService, но на всякий случай
+    clearUserCache();
     setUser(null);
   };
 

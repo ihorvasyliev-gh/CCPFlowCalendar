@@ -1,5 +1,6 @@
 import { User, UserRole } from '../types';
 import { supabase } from '../lib/supabase';
+import { cacheUser, clearUserCache } from '../utils/sessionCache';
 
 // Преобразуем данные пользователя из Supabase в наш формат
 const mapSupabaseUserToUser = (supabaseUser: any): User => {
@@ -107,10 +108,14 @@ export const signUp = async (
         throw new Error(insertError?.message || 'Failed to create user profile');
       }
 
-      return mapSupabaseUserToUser(newUserData);
+      const user = mapSupabaseUserToUser(newUserData);
+      cacheUser(user);
+      return user;
     }
 
-    return mapSupabaseUserToUser(userData);
+    const user = mapSupabaseUserToUser(userData);
+    cacheUser(user);
+    return user;
   } catch (error: any) {
     console.error('Sign up error:', error);
 
@@ -191,7 +196,10 @@ export const login = async (email: string, password: string): Promise<User> => {
       throw new Error('User profile not found. Please contact administrator.');
     }
 
-    return mapSupabaseUserToUser(userData);
+    const user = mapSupabaseUserToUser(userData);
+    // Кэшируем пользователя для быстрого восстановления сессии
+    cacheUser(user);
+    return user;
   } catch (error: any) {
     // Логируем ошибку для отладки
     console.error('Login error:', error);
@@ -214,6 +222,8 @@ export const login = async (email: string, password: string): Promise<User> => {
 // Выход пользователя
 export const logout = async (): Promise<void> => {
   const { error } = await supabase.auth.signOut();
+  // Очищаем кэш пользователя при выходе
+  clearUserCache();
   if (error) {
     throw new Error(error.message || 'Failed to logout');
   }
@@ -249,7 +259,10 @@ export const getCurrentUser = async (userId?: string): Promise<User | null> => {
       return null;
     }
 
-    return mapSupabaseUserToUser(userData);
+    const user = mapSupabaseUserToUser(userData);
+    // Кэшируем пользователя при получении
+    cacheUser(user);
+    return user;
   } catch (error: any) {
     // Игнорируем AbortError и таймауты при проверке сессии - это нормально
     if (error?.name === 'AbortError' || error?.message?.includes('aborted') || error?.message?.includes('cancelled') || error?.message?.includes('timeout')) {
