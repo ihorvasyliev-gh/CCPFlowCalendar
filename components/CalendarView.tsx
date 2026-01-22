@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Event, ViewMode, EventCategory } from '../types';
 import { getDaysInMonth, getFirstDayOfMonth, isSameDay, addMonths } from '../utils/date';
+import { expandRecurringEvents } from '../utils/recurrence';
 import { ChevronLeft, ChevronRight, Grid, List as ListIcon, MapPin, Clock, Tag } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -36,11 +37,44 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick }) => 
     return days;
   }, [currentDate, daysInMonth, firstDay]);
 
-  const sortedEvents = useMemo(() => {
-    return [...events].sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [events]);
-
   const monthName = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+  // Get start and end of current month view
+  const monthStart = useMemo(() => {
+    return new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  }, [currentDate]);
+
+  const monthEnd = useMemo(() => {
+    return new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
+  }, [currentDate]);
+
+  // Expand recurring events for the current month view
+  const displayEvents = useMemo(() => {
+    // Expand recurring events
+    const expanded = expandRecurringEvents(events, monthStart, monthEnd);
+    // Sort by date
+    return expanded.sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [events, monthStart, monthEnd]);
+
+  // For List View: Filter out past events (strictly before now) AND limit to current month
+  const listViewEvents = useMemo(() => {
+    const now = new Date();
+    // Reset time for strictly date based comparison if needed, but "past events" usually implies time too.
+    // User request: "filter out events in past"
+    return displayEvents.filter(e => {
+      // Keep if it is in the future relative to NOW
+      // OR if it's today (even if time passed, usually good to show today's events still)
+      // Let's say strict > now for simplicity, or maybe end of today?
+      // Let's use: e.date > now
+      // ALSO ensure it belongs to the currently selected month (Calendar navigation behavior)
+
+      const isFuture = e.date >= now;
+      const isCurrentMonth = e.date.getMonth() === currentDate.getMonth() && e.date.getFullYear() === currentDate.getFullYear();
+
+      return isFuture && isCurrentMonth;
+    });
+  }, [displayEvents, currentDate]);
+
 
   const getCategoryColor = (category?: EventCategory) => {
     if (!category) return 'bg-brand-50 text-brand-700 border-brand-200 dark:bg-brand-900/30 dark:text-brand-300 dark:border-brand-700/50';
@@ -103,7 +137,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick }) => 
             {calendarDays.map((day, idx) => {
               if (!day) return <div key={`empty-${idx}`} className="h-28 sm:h-36 bg-slate-50/30 dark:bg-slate-800/20 rounded-2xl"></div>;
 
-              const dayEvents = events.filter(e => isSameDay(e.date, day));
+              const dayEvents = displayEvents.filter(e => isSameDay(e.date, day));
               const isToday = isSameDay(day, new Date());
 
               return (
@@ -138,10 +172,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick }) => 
       {/* List View */}
       {viewMode === 'list' && (
         <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
-          {sortedEvents.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 dark:text-slate-500">No upcoming events found.</div>
+          {listViewEvents.length === 0 ? (
+            <div className="p-12 text-center text-slate-400 dark:text-slate-500">No upcoming events found for this month.</div>
           ) : (
-            sortedEvents.map(event => (
+            listViewEvents.map(event => (
               <div key={event.id} onClick={() => onEventClick(event)} className="p-6 hover:bg-white/50 dark:hover:bg-slate-800/50 cursor-pointer flex items-start gap-6 transition-all group border-l-4 border-transparent hover:border-brand-500">
                 {/* Date Badge */}
                 <div className={`flex-shrink-0 w-20 text-center rounded-2xl p-3 transition-transform group-hover:scale-105 shadow-sm ${theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-white text-slate-800'}`}>
@@ -153,7 +187,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick }) => 
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <h3 className={`text-lg font-bold text-slate-800 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors truncate ${event.status === 'cancelled' ? 'line-through opacity-60' :
-                          event.status === 'draft' ? 'opacity-70' : ''
+                        event.status === 'draft' ? 'opacity-70' : ''
                         }`}>
                         {event.title}
                       </h3>

@@ -1,102 +1,103 @@
 import { Event, RecurrenceRule } from '../types';
 
-export const generateRecurringEvents = (baseEvent: Event, rule: RecurrenceRule, count: number = 10): Event[] => {
-  const events: Event[] = [];
-  const startDate = new Date(baseEvent.date);
-
-  for (let i = 0; i < count; i++) {
-    const eventDate = new Date(startDate);
-
-    switch (rule.type) {
-      case 'daily':
-        eventDate.setDate(startDate.getDate() + i * (rule.interval || 1));
-        break;
-      case 'weekly':
-        eventDate.setDate(startDate.getDate() + i * 7 * (rule.interval || 1));
-        if (rule.daysOfWeek && rule.daysOfWeek.length > 0) {
-          // Find next occurrence on one of the specified days
-          const targetDay = rule.daysOfWeek[0];
-          const currentDay = eventDate.getDay();
-          const daysToAdd = (targetDay - currentDay + 7) % 7;
-          eventDate.setDate(eventDate.getDate() + daysToAdd);
-        }
-        break;
-      case 'monthly':
-        eventDate.setMonth(startDate.getMonth() + i * (rule.interval || 1));
-        break;
-      case 'yearly':
-        eventDate.setFullYear(startDate.getFullYear() + i * (rule.interval || 1));
-        break;
-      default:
-        return events; // No recurrence
-    }
-
-    // Check if we've exceeded the end date
-    if (rule.endDate && eventDate > rule.endDate) {
-      break;
-    }
-
-    // Check if we've exceeded the occurrence count
-    if (rule.occurrences && i >= rule.occurrences) {
-      break;
-    }
-
-    const recurringEvent: Event = {
-      ...baseEvent,
-      id: `${baseEvent.id}-recur-${i}`,
-      date: new Date(eventDate)
-    };
-
-    events.push(recurringEvent);
-  }
-
-  return events;
+/**
+ * Checks if a date is actively within the recurrence range
+ */
+const isDateWithinRecurrenceRange = (date: Date, start: Date, rule: RecurrenceRule, count: number): boolean => {
+  if (date < start) return false;
+  if (rule.endDate && date > rule.endDate) return false;
+  if (rule.occurrences && count >= rule.occurrences) return false;
+  return true;
 };
 
-export const formatRecurrenceRule = (rule: RecurrenceRule): string => {
-  if (rule.type === 'none') {
-    return 'No recurrence';
-  }
+/**
+ * Expands a list of events into individual instances for a specific date range.
+ * Handles recurring events by generating instances.
+ */
+export const expandRecurringEvents = (events: Event[], rangeStart: Date, rangeEnd: Date): Event[] => {
+  const expandedEvents: Event[] = [];
 
-  const parts: string[] = [];
+  events.forEach(event => {
+    // 1. If it's not recurring, just check if it falls in the range
+    if (!event.recurrence || event.recurrence.type === 'none') {
+      if (event.date >= rangeStart && event.date <= rangeEnd) {
+        expandedEvents.push(event);
+      }
+      return;
+    }
 
-  switch (rule.type) {
-    case 'daily':
-      parts.push('Daily');
-      if (rule.interval && rule.interval > 1) {
-        parts.push(`every ${rule.interval} days`);
-      }
-      break;
-    case 'weekly':
-      parts.push('Weekly');
-      if (rule.interval && rule.interval > 1) {
-        parts.push(`every ${rule.interval} weeks`);
-      }
-      if (rule.daysOfWeek && rule.daysOfWeek.length > 0) {
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const days = rule.daysOfWeek.map(d => dayNames[d]).join(', ');
-        parts.push(`on ${days}`);
-      }
-      break;
-    case 'monthly':
-      parts.push('Monthly');
-      if (rule.interval && rule.interval > 1) {
-        parts.push(`every ${rule.interval} months`);
-      }
-      break;
-    case 'yearly':
-      parts.push('Yearly');
-      if (rule.interval && rule.interval > 1) {
-        parts.push(`every ${rule.interval} years`);
-      }
-      break;
-  }
+    // 2. If it is recurring, generate instances
+    const rule = event.recurrence;
+    const instances: Event[] = [];
+    let currentInstanceDate = new Date(event.date);
+    let count = 0;
 
-  if (rule.endDate) {
-    parts.push(`until ${rule.endDate.toLocaleDateString()}`);
-  } else if (rule.occurrences) {
-    parts.push(`for ${rule.occurrences} occurrences`);
-  }
+    // We need to iterate until we pass the rangeEnd OR the recurrence rules stop us
+    // Optimization: If the start is way before rangeStart, we might want to skip ahead,
+    // but for simple intervals iterating is safer for correctness (especially months).
+    // For performance on years of data, we'd calculate the first occurrence >= rangeStart.
 
-  return parts.join(' ');
+    // Allow a safety limit to prevent infinite loops with bad data
+    const MAX_INSTANCES = 1000;
+
+    while (
+      count < MAX_INSTANCES &&
+      (!rule.endDate || currentInstanceDate <= rule.endDate) &&
+      (!rule.occurrences || count < rule.occurrences)
+    ) {
+
+      // If the current instance is past the range we are looking at, we can stop
+      // BUT only if we are sure it's past.
+      if (currentInstanceDate > rangeEnd) {
+        break;
+      }
+
+      // If the instance is within the range, add it
+      if (currentInstanceDate >= rangeStart) {
+        // Clone the event and set the new date
+        // Create a unique ID for the instance to avoid key collisions in React
+        const instanceId = `${event.id}_${currentInstanceDate.getTime()}`;
+        instances.push({
+          ...event,
+          id: instanceId,
+          date: new Date(currentInstanceDate),
+          // We might want to mark it as an instance if we need UI distinctness
+        });
+      }
+
+      // Calculate next date
+      const nextDate = new Date(currentInstanceDate);
+      const interval = rule.interval || 1;
+
+      switch (rule.type) {
+        case 'daily':
+          nextDate.setDate(nextDate.getDate() + interval);
+          break;
+        case 'weekly':
+          nextDate.setDate(nextDate.getDate() + (interval * 7));
+          // TODO: specific days of week support could go here logic-wise
+          // For now, simple "every N weeks on the same day" logic
+          break;
+        case 'monthly':
+          nextDate.setMonth(nextDate.getMonth() + interval);
+          break;
+        case 'yearly':
+          nextDate.setFullYear(nextDate.getFullYear() + interval);
+          break;
+        case 'custom':
+          // Default to daily if custom logic not fully specified
+          nextDate.setDate(nextDate.getDate() + interval);
+          break;
+        default:
+          return; // Should not happen
+      }
+
+      currentInstanceDate = nextDate;
+      count++;
+    }
+
+    expandedEvents.push(...instances);
+  });
+
+  return expandedEvents;
 };

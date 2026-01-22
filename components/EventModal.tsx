@@ -42,7 +42,13 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [newAttachments, setNewAttachments] = useState<File[]>([]);
+
   const [userHasRsvped, setUserHasRsvped] = useState(false);
+
+  // Recurrence State
+  const [recurrenceType, setRecurrenceType] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('none');
+  const [recurrenceInterval, setRecurrenceInterval] = useState<number>(1);
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
@@ -82,6 +88,18 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
 
         setPosterFile(null);
         setNewAttachments([]);
+
+        // Load Recurrence Data
+        if (event.recurrence) {
+          setRecurrenceType(event.recurrence.type as any);
+          setRecurrenceInterval(event.recurrence.interval || 1);
+          setRecurrenceEndDate(event.recurrence.endDate ? event.recurrence.endDate.toISOString().split('T')[0] : '');
+        } else {
+          setRecurrenceType('none');
+          setRecurrenceInterval(1);
+          setRecurrenceEndDate('');
+        }
+
         setIsEditing(false); // Reset to view mode initially
       } else {
         // Create Mode
@@ -101,6 +119,10 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
         setNewAttachments([]);
         setUserHasRsvped(false);
         setIsEditing(false);
+        // Reset Recurrence
+        setRecurrenceType('none');
+        setRecurrenceInterval(1);
+        setRecurrenceEndDate('');
       }
     }
   }, [isOpen, event, currentUserId]);
@@ -132,6 +154,11 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
       tags: tagsArray.length > 0 ? tagsArray : undefined,
       rsvpEnabled,
       maxAttendees: maxAttendees ? Number(maxAttendees) : undefined,
+      recurrence: recurrenceType !== 'none' ? {
+        type: recurrenceType,
+        interval: recurrenceInterval,
+        endDate: recurrenceEndDate ? new Date(recurrenceEndDate) : undefined,
+      } : undefined
     };
 
     const validationErrors = validateEvent(eventData);
@@ -170,6 +197,11 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
         maxAttendees: maxAttendees ? Number(maxAttendees) : undefined,
         attachments: [...attachments, ...uploadedAttachments],
         creatorId: event?.creatorId || currentUserId,
+        recurrence: recurrenceType !== 'none' ? {
+          type: recurrenceType,
+          interval: recurrenceInterval,
+          endDate: recurrenceEndDate ? new Date(recurrenceEndDate) : undefined,
+        } : undefined
       };
 
       if (isCreating && onSave) {
@@ -283,8 +315,8 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
                     {event.status === 'draft' && <span className="px-2.5 py-1 text-xs font-bold bg-slate-100 text-slate-600 rounded-lg">Draft</span>}
                     {event.category && (
                       <span className={`px-2.5 py-1 text-xs font-bold rounded-lg uppercase tracking-wider ${event.category === 'meeting' ? 'bg-blue-100 text-blue-700' :
-                          event.category === 'workshop' ? 'bg-purple-100 text-purple-700' :
-                            'bg-gray-100 text-gray-700'
+                        event.category === 'workshop' ? 'bg-purple-100 text-purple-700' :
+                          'bg-gray-100 text-gray-700'
                         }`}>
                         {event.category}
                       </span>
@@ -385,8 +417,8 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
                         onClick={handleRsvp}
                         disabled={isRsvping || (event.maxAttendees && (event.attendees?.length || 0) >= event.maxAttendees && !userHasRsvped)}
                         className={`px-5 py-2.5 text-sm font-bold rounded-xl shadow-lg shadow-brand-500/10 transition-all active:scale-95 ${userHasRsvped
-                            ? 'bg-white text-red-600 border border-red-100 hover:bg-red-50'
-                            : 'bg-brand-600 text-white hover:bg-brand-700 hover:scale-105'
+                          ? 'bg-white text-red-600 border border-red-100 hover:bg-red-50'
+                          : 'bg-brand-600 text-white hover:bg-brand-700 hover:scale-105'
                           } disabled:opacity-50 disabled:cursor-not-allowed`}
                       >
                         {isRsvping ? <Loader2 className="h-4 w-4 animate-spin" /> : userHasRsvped ? 'Cancel RSVP' : 'Join Event'}
@@ -468,6 +500,51 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
                     <span className="text-sm text-brand-600 font-bold">{previewUrl ? 'Change Image' : 'Click to Upload'}</span>
                   </div>
                   <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                </div>
+
+                {/* Recurrence Section */}
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-3">Recurrence</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">Repeat</label>
+                      <select
+                        value={recurrenceType}
+                        onChange={(e) => setRecurrenceType(e.target.value as any)}
+                        className="block w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 transition-all"
+                      >
+                        <option value="none">None</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                      </select>
+                    </div>
+
+                    {recurrenceType !== 'none' && (
+                      <>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">Interval (Every X)</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={recurrenceInterval}
+                            onChange={(e) => setRecurrenceInterval(Number(e.target.value))}
+                            className="block w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 transition-all"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">End Date</label>
+                          <input
+                            type="date"
+                            value={recurrenceEndDate}
+                            onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                            className="block w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 transition-all"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </form>
             )}
