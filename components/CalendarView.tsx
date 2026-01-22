@@ -2,17 +2,18 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Event, ViewMode, EventCategory } from '../types';
 import { getDaysInMonth, getFirstDayOfMonth, isSameDay, addMonths } from '../utils/date';
 import { expandRecurringEvents } from '../utils/recurrence';
-import { ChevronLeft, ChevronRight, Grid, List as ListIcon, MapPin, Clock, Tag } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Grid, List as ListIcon, MapPin, Clock, Tag, Plus } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface CalendarViewProps {
   events: Event[];
   onEventClick: (event: Event) => void;
   onPrefetchMonth?: (date: Date) => void;
+  onAddEventForDate?: (date: Date) => void;
   recurrenceExceptions?: Map<string, Date[]>;
 }
 
-const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPrefetchMonth, recurrenceExceptions }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPrefetchMonth, onAddEventForDate, recurrenceExceptions }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const { theme } = useTheme();
@@ -191,10 +192,25 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
 
               return (
                 <div key={day.toISOString()} className={`min-h-[8rem] group border-b border-r border-slate-100 dark:border-slate-800 p-2 transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/50 ${isToday ? 'bg-brand-50 dark:bg-brand-900/50 ring-2 ring-brand-500 dark:ring-brand-400 ring-inset shadow-sm dark:shadow-brand-900/20' : 'bg-white dark:bg-slate-900/0'}`}>
-                  <div className={`text-right text-xs font-semibold mb-2 ${isToday ? 'text-brand-700 dark:text-brand-300' : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500'}`}>
-                    {isToday ? (
-                      <span className="bg-brand-500 dark:bg-brand-400 text-white dark:text-slate-900 px-2 py-1 rounded-full font-bold text-sm shadow-sm">{day.getDate()}</span>
-                    ) : day.getDate()}
+                  <div className={`flex items-center justify-end gap-1 mb-2 ${isToday ? 'text-brand-700 dark:text-brand-300' : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500'}`}>
+                    <span className="text-xs font-semibold">
+                      {isToday ? (
+                        <span className="bg-brand-500 dark:bg-brand-400 text-white dark:text-slate-900 px-2 py-1 rounded-full font-bold text-sm shadow-sm">{day.getDate()}</span>
+                      ) : (
+                        day.getDate()
+                      )}
+                    </span>
+                    {onAddEventForDate && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onAddEventForDate(day); }}
+                        className="p-1 rounded-md text-slate-400 hover:text-brand-600 hover:bg-brand-100 dark:hover:bg-brand-900/30 dark:hover:text-brand-400 transition-colors"
+                        title="Add event"
+                        aria-label="Add event"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                   <div className="space-y-1">
                     {dayEvents.map(ev => {
@@ -299,6 +315,7 @@ export default React.memo(CalendarView, (prevProps, nextProps) => {
   
   if (prevProps.onEventClick !== nextProps.onEventClick) return false;
   if (prevProps.onPrefetchMonth !== nextProps.onPrefetchMonth) return false;
-  
+  if (prevProps.onAddEventForDate !== nextProps.onAddEventForDate) return false;
+
   return true; // Props are equal, skip re-render
 });

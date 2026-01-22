@@ -526,6 +526,12 @@ export const deleteRecurrenceInstance = async (eventId: string, instanceDate: Da
   }
 
   // Добавляем запись в историю
+  const formattedDate = normalizedDate.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+  
   const { error: historyError } = await supabase
     .from('event_history')
     .insert({
@@ -534,7 +540,10 @@ export const deleteRecurrenceInstance = async (eventId: string, instanceDate: Da
       user_name: userName,
       action: 'updated',
       changes: {
-        deleted_instance: { date: normalizedDate.toISOString() }
+        deleted_instance: {
+          old: formattedDate,
+          new: 'deleted'
+        }
       }
     });
 

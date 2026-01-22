@@ -36,6 +36,7 @@ const AppContent: React.FC = () => {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [createWithDate, setCreateWithDate] = useState<Date | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // Session restoration - мгновенное восстановление из кэша
@@ -270,6 +271,13 @@ const AppContent: React.FC = () => {
 
   const handleCreateClick = useCallback(() => {
     setSelectedEvent(null);
+    setCreateWithDate(null);
+    setIsModalOpen(true);
+  }, []);
+
+  const handleAddEventForDate = useCallback((date: Date) => {
+    setCreateWithDate(date);
+    setSelectedEvent(null);
     setIsModalOpen(true);
   }, []);
 
@@ -385,6 +393,7 @@ const AppContent: React.FC = () => {
 
   const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
+    setCreateWithDate(null);
     setTimeout(() => setSelectedEvent(null), 200); // Clear after animation
   }, []);
 
@@ -561,6 +570,7 @@ const AppContent: React.FC = () => {
             events={filteredEvents} 
             onEventClick={handleEventClick}
             onPrefetchMonth={handlePrefetchMonth}
+            onAddEventForDate={handleAddEventForDate}
             recurrenceExceptions={recurrenceExceptions}
           />
         )}
@@ -572,6 +582,7 @@ const AppContent: React.FC = () => {
             isOpen={isModalOpen}
             onClose={handleCloseModal}
             event={selectedEvent}
+            initialDate={createWithDate}
             role={user.role}
             currentUserId={user.id}
             currentUserName={user.fullName}

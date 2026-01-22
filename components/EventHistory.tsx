@@ -48,14 +48,45 @@ const EventHistory: React.FC<EventHistoryProps> = ({ history }) => {
 
     return (
       <div className="mt-2 text-xs text-gray-600 space-y-1">
-        {Object.entries(changes).map(([field, { old, new: newValue }]) => (
-          <div key={field} className="flex items-center">
-            <span className="font-medium capitalize">{field}:</span>
-            <span className="ml-2 line-through text-red-600">{String(old)}</span>
-            <span className="mx-2">→</span>
-            <span className="text-green-600">{String(newValue)}</span>
-          </div>
-        ))}
+        {Object.entries(changes).map(([field, change]) => {
+          // Handle case where change might not have old/new structure
+          if (!change || typeof change !== 'object' || (!('old' in change) && !('new' in change))) {
+            // Fallback for malformed data
+            return null;
+          }
+
+          const { old, new: newValue } = change;
+          
+          // Special handling for deleted_instance
+          if (field === 'deleted_instance') {
+            return (
+              <div key={field} className="flex items-center">
+                <span className="font-medium">Deleted instance:</span>
+                <span className="ml-2 text-red-600">{String(old || 'N/A')}</span>
+              </div>
+            );
+          }
+
+          // Skip if both values are undefined or null
+          if ((old === undefined || old === null) && (newValue === undefined || newValue === null)) {
+            return null;
+          }
+
+          return (
+            <div key={field} className="flex items-center">
+              <span className="font-medium capitalize">{field.replace(/_/g, ' ')}:</span>
+              {old !== undefined && old !== null && (
+                <>
+                  <span className="ml-2 line-through text-red-600">{String(old)}</span>
+                  <span className="mx-2">→</span>
+                </>
+              )}
+              {newValue !== undefined && newValue !== null && (
+                <span className="text-green-600">{String(newValue)}</span>
+              )}
+            </div>
+          );
+        })}
       </div>
     );
   };

@@ -15,6 +15,7 @@ interface EventModalProps {
   isOpen: boolean;
   onClose: () => void;
   event: Event | null; // If null, we are in "Create Mode"
+  initialDate?: Date | null; // Pre-fill date when creating from calendar day plus
   role: UserRole;
   currentUserId?: string;
   currentUserName?: string;
@@ -25,7 +26,7 @@ interface EventModalProps {
   onDeleteInstance?: (eventId: string, instanceDate: Date) => Promise<void>; // For instance deletion
 }
 
-const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, currentUserId = '1', currentUserName = 'User', onSave, onUpdate, onEventUpdate, onDelete, onDeleteInstance }) => {
+const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initialDate, role, currentUserId = '1', currentUserName = 'User', onSave, onUpdate, onEventUpdate, onDelete, onDeleteInstance }) => {
   const { theme } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -143,8 +144,16 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
         // Create Mode
         setTitle('');
         setDescription('');
-        setDateStr('');
-        setTimeStr('');
+        if (initialDate) {
+          const yyyy = initialDate.getFullYear();
+          const mm = String(initialDate.getMonth() + 1).padStart(2, '0');
+          const dd = String(initialDate.getDate()).padStart(2, '0');
+          setDateStr(`${yyyy}-${mm}-${dd}`);
+          setTimeStr('09:00');
+        } else {
+          setDateStr('');
+          setTimeStr('');
+        }
         setLocation('');
         setCategory('');
         setStatus('draft');
@@ -166,7 +175,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
         setRecurrenceEndDate('');
       }
     }
-  }, [isOpen, event, currentUserId]);
+  }, [isOpen, event, initialDate, currentUserId]);
 
   // Load categories when modal opens
   useEffect(() => {
@@ -925,6 +934,7 @@ export default React.memo(EventModal, (prevProps, nextProps) => {
   if (prevProps.event?.title !== nextProps.event?.title) return false;
   if (prevProps.event?.date?.getTime() !== nextProps.event?.date?.getTime()) return false;
   if (prevProps.event?.status !== nextProps.event?.status) return false;
+  if (prevProps.initialDate?.getTime() !== nextProps.initialDate?.getTime()) return false;
   
   // Compare callbacks
   if (prevProps.onClose !== nextProps.onClose) return false;
