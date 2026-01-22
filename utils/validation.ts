@@ -30,11 +30,11 @@ export const validateEvent = (eventData: Partial<Event>): ValidationError[] => {
     const eventDate = new Date(eventData.date);
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    
-    // Allow events in the past for editing, but warn for new events
-    if (eventDate < now && !eventData.id) {
-      errors.push({ field: 'date', message: 'Event date cannot be in the past' });
-    }
+
+    // validation regarding past dates is removed to allow backtracking
+    // if (eventDate < now && !eventData.id) {
+    //   errors.push({ field: 'date', message: 'Event date cannot be in the past' });
+    // }
   }
 
   if (eventData.maxAttendees !== undefined && eventData.maxAttendees < 1) {
