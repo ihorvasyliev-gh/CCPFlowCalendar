@@ -226,8 +226,8 @@ export const updateEvent = async (id: string, eventData: Omit<Event, 'id' | 'cre
   }
 
   // Создаем запись в истории изменений
-  const action = eventData.status === 'cancelled' && oldEventData.status !== 'cancelled' 
-    ? 'status_changed' 
+  const action = eventData.status === 'cancelled' && oldEventData.status !== 'cancelled'
+    ? 'status_changed'
     : 'updated';
 
   const { error: historyError } = await supabase
@@ -257,7 +257,7 @@ export const updateEvent = async (id: string, eventData: Omit<Event, 'id' | 'cre
 
     // Добавляем только новые attachments
     const newAttachments = eventData.attachments.filter(att => !existingUrls.has(att.url));
-    
+
     if (newAttachments.length > 0) {
       const attachmentsInsert = newAttachments.map(att => ({
         event_id: id,
@@ -284,33 +284,47 @@ export const updateEvent = async (id: string, eventData: Omit<Event, 'id' | 'cre
   return updatedEvent;
 };
 
-// Simulation of Cloudflare R2 Upload
-// In production: Request a presigned URL from Supabase Edge Function, then PUT to R2.
+// Cloudflare R2 Upload via Pages Functions
 export const uploadPosterToR2 = async (file: File): Promise<string> => {
-  return new Promise((resolve) => {
-    console.log(`Simulating upload of ${file.name} to Cloudflare R2...`);
-    // Return a fake URL after delay
-    setTimeout(() => {
-      resolve(URL.createObjectURL(file)); 
-    }, 1500);
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch('/api/upload', {
+    method: 'PUT',
+    body: formData,
   });
+
+  if (!response.ok) {
+    throw new Error('Failed to upload poster');
+  }
+
+  const data = await response.json();
+  return data.url;
 };
 
 export const uploadAttachment = async (file: File): Promise<{ id: string; name: string; url: string; type: string; size: number; uploadedAt: Date }> => {
-  return new Promise((resolve) => {
-    console.log(`Simulating upload of ${file.name} to Cloudflare R2...`);
-    setTimeout(() => {
-      const attachment = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: file.name,
-        url: URL.createObjectURL(file),
-        type: file.type.startsWith('image/') ? 'image' : file.type === 'application/pdf' ? 'pdf' : 'document',
-        size: file.size,
-        uploadedAt: new Date()
-      };
-      resolve(attachment);
-    }, 1500);
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch('/api/upload', {
+    method: 'PUT',
+    body: formData,
   });
+
+  if (!response.ok) {
+    throw new Error('Failed to upload attachment');
+  }
+
+  const data = await response.json();
+
+  return {
+    id: data.key, // Use the R2 key as the ID for now, or generate one if needed
+    name: data.name,
+    url: data.url,
+    type: data.type.startsWith('image/') ? 'image' : data.type === 'application/pdf' ? 'pdf' : 'document',
+    size: data.size,
+    uploadedAt: new Date()
+  };
 };
 
 export const deleteEvent = async (id: string): Promise<void> => {
