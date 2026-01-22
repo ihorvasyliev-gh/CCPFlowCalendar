@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Filter, X, Calendar, MapPin, User, Tag } from 'lucide-react';
 import { EventFilters, EventCategory, EventStatus } from '../types';
 
@@ -67,13 +67,15 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
     }}
   ];
 
-  const hasActiveFilters = 
+  const hasActiveFilters = useMemo(() => 
     filters.category || 
     filters.status || 
     filters.dateRange || 
     filters.location || 
     filters.creatorId ||
-    (filters.tags && filters.tags.length > 0);
+    (filters.tags && filters.tags.length > 0),
+    [filters]
+  );
 
   const clearFilters = () => {
     onFiltersChange({});
@@ -294,4 +296,40 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
   );
 };
 
-export default EventFiltersComponent;
+// Memoize component to prevent unnecessary re-renders
+export default React.memo(EventFiltersComponent, (prevProps, nextProps) => {
+  // Compare filters object
+  if (prevProps.filters !== nextProps.filters) {
+    // Deep compare filter properties
+    if (prevProps.filters.category !== nextProps.filters.category) return false;
+    if (prevProps.filters.status !== nextProps.filters.status) return false;
+    if (prevProps.filters.location !== nextProps.filters.location) return false;
+    if (prevProps.filters.creatorId !== nextProps.filters.creatorId) return false;
+    
+    // Compare date ranges
+    const prevStart = prevProps.filters.dateRange?.start?.getTime();
+    const nextStart = nextProps.filters.dateRange?.start?.getTime();
+    const prevEnd = prevProps.filters.dateRange?.end?.getTime();
+    const nextEnd = nextProps.filters.dateRange?.end?.getTime();
+    if (prevStart !== nextStart || prevEnd !== nextEnd) return false;
+    
+    // Compare tags arrays
+    const prevTags = prevProps.filters.tags?.join(',') || '';
+    const nextTags = nextProps.filters.tags?.join(',') || '';
+    if (prevTags !== nextTags) return false;
+  }
+  
+  // Compare arrays by length and content
+  if (prevProps.availableLocations.length !== nextProps.availableLocations.length) return false;
+  if (prevProps.availableLocations.join(',') !== nextProps.availableLocations.join(',')) return false;
+  
+  if (prevProps.availableCreators.length !== nextProps.availableCreators.length) return false;
+  const prevCreators = prevProps.availableCreators.map(c => `${c.id}:${c.name}`).join(',');
+  const nextCreators = nextProps.availableCreators.map(c => `${c.id}:${c.name}`).join(',');
+  if (prevCreators !== nextCreators) return false;
+  
+  if (prevProps.onFiltersChange !== nextProps.onFiltersChange) return false;
+  if (prevProps.onClose !== nextProps.onClose) return false;
+  
+  return true; // Props are equal, skip re-render
+});

@@ -89,29 +89,53 @@ body {
 
 .animate-fade-in {
     animation: fadeIn 0.4s ease-out forwards;
+    will-change: opacity;
 }
 
 .animate-slide-up {
     animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
 }
 
 .animate-scale-in {
     animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
 }
 
 /* --- Interactive Elements --- */
 
 .btn-hover-effect {
-    transition: var(--transition-base);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
 }
 
 .btn-hover-effect:hover {
-    transform: translateY(-1px);
+    transform: translateY(-1px) translateZ(0);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .btn-hover-effect:active {
-    transform: translateY(0) scale(0.98);
+    transform: translateY(0) scale(0.98) translateZ(0);
+}
+
+/* GPU-accelerated transitions */
+.transition-transform {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+    transform: translateZ(0);
+}
+
+.transition-opacity {
+    transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: opacity;
+}
+
+.transition-all-gpu {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, opacity;
+    transform: translateZ(0);
 }
 
 /* Scrollbar Polish */
@@ -127,8 +151,33 @@ body {
 ::-webkit-scrollbar-thumb {
     background: #CBD5E1;
     border-radius: 4px;
+    transition: background-color 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
     background: #94A3B8;
+}
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Performance optimizations */
+* {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* GPU acceleration for common animated elements */
+button, a, .cursor-pointer {
+    will-change: transform;
+    transform: translateZ(0);
+}
+
+/* Optimize backdrop filters */
+.glass-panel,
+.glass-panel-dark {
+    will-change: backdrop-filter, background-color;
+    transform: translateZ(0);
 }

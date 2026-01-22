@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
 import Navbar from './components/Navbar';
 import CalendarView from './components/CalendarView';
-import EventModal from './components/EventModal';
 import LoginPage from './pages/LoginPage';
 import SearchBar from './components/SearchBar';
 import EventFiltersComponent from './components/EventFilters';
-import ExportModal from './components/ExportModal';
 import ErrorBoundary from './components/ErrorBoundary';
 import { CalendarDaySkeleton } from './components/SkeletonLoader';
 import { ToastProvider, useToast } from './contexts/ToastContext';
@@ -18,13 +16,16 @@ import { filterEvents } from './utils/filterEvents';
 import { getCachedUser, cacheUser, clearUserCache, hasValidSession } from './utils/sessionCache';
 import { getCachedEvents, cacheEvents, clearEventsCache } from './utils/eventsCache';
 
+// Lazy load modals for code splitting
+const EventModal = lazy(() => import('./components/EventModal'));
+const ExportModal = lazy(() => import('./components/ExportModal'));
+
 const AppContent: React.FC = () => {
   const { showToast } = useToast();
   // Global State
   const [user, setUser] = useState<User | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
-  const [isSessionLoading, setIsSessionLoading] = useState(true);
 
   // Search and Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,13 +36,11 @@ const AppContent: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
-  // Session restoration - полностью переписанный механизм
+  // Session restoration - мгновенное восстановление из кэша
   const userIdRef = React.useRef<string | null>(null);
-  const isInitializedRef = React.useRef(false);
 
   useEffect(() => {
     let isMounted = true;
-    const initStartTime = performance.now();
 
     // Функция для загрузки профиля пользователя с сервера
     const fetchUserProfileFromServer = async (uid: string): Promise<User | null> => {
@@ -67,15 +66,6 @@ const AppContent: React.FC = () => {
         // Пользователь найден в кэше - восстанавливаем мгновенно
         userIdRef.current = cachedUser.id;
         setUser(cachedUser);
-
-        // Завершаем инициализацию сразу (мгновенно!)
-        if (!isInitializedRef.current && isMounted) {
-          isInitializedRef.current = true;
-          setIsSessionLoading(false);
-          const elapsed = performance.now() - initStartTime;
-          console.log(`Session initialized in ${elapsed.toFixed(0)}ms (from cache)`);
-          console.log('User restored from cache:', cachedUser.email);
-        }
 
         // В фоне проверяем и обновляем данные пользователя с сервера
         supabase.auth.getSession().then(({ data: { session }, error }) => {
@@ -104,22 +94,7 @@ const AppContent: React.FC = () => {
 
         if (session && !error) {
           // Сессия есть - загружаем пользователя с сервера
-          fetchUserProfileFromServer(session.user.id).then((user) => {
-            if (!isInitializedRef.current && isMounted) {
-              isInitializedRef.current = true;
-              setIsSessionLoading(false);
-              const elapsed = performance.now() - initStartTime;
-              // console.log(`Session initialized in ${elapsed.toFixed(0)}ms (from server)`);
-            }
-          });
-        } else {
-          // Нет сессии или ошибка - завершаем инициализацию
-          if (!isInitializedRef.current && isMounted) {
-            isInitializedRef.current = true;
-            setIsSessionLoading(false);
-            const elapsed = performance.now() - initStartTime;
-            console.log(`Session initialized in ${elapsed.toFixed(0)}ms (no session)`);
-          }
+          fetchUserProfileFromServer(session.user.id);
         }
       });
     };
@@ -134,11 +109,7 @@ const AppContent: React.FC = () => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         // Пользователь вошел или токен обновлен
         if (session) {
-          const user = await fetchUserProfileFromServer(session.user.id);
-          if (user && !isInitializedRef.current) {
-            isInitializedRef.current = true;
-            setIsSessionLoading(false);
-          }
+          await fetchUserProfileFromServer(session.user.id);
         }
       } else if (event === 'SIGNED_OUT') {
         // Пользователь вышел
@@ -147,10 +118,6 @@ const AppContent: React.FC = () => {
         setEvents([]);
         clearUserCache();
         clearEventsCache();
-        if (!isInitializedRef.current) {
-          isInitializedRef.current = true;
-          setIsSessionLoading(false);
-        }
       }
     });
 
@@ -172,84 +139,242 @@ const AppContent: React.FC = () => {
       setLoadingEvents(true);
     }
 
-    getEvents()
-      .then((data) => {
-        setEvents(data);
-        cacheEvents(data);
-      })
-      .catch((error) => {
-        console.error('Error loading events:', error);
-        showToast('Failed to load events', 'error');
-      })
-      .finally(() => {
-        setLoadingEvents(false);
-      });
+    // Background sync using requestIdleCallback for non-blocking updates
+    const syncEvents = () => {
+      getEvents()
+        .then((data) => {
+          setEvents(data);
+          cacheEvents(data);
+        })
+        .catch((error) => {
+          console.error('Error loading events:', error);
+          // Only show error if no cached data exists
+          if (!cached || cached.length === 0) {
+            showToast('Failed to load events', 'error');
+          }
+        })
+        .finally(() => {
+          setLoadingEvents(false);
+        });
+    };
+
+    // Use requestIdleCallback if available, otherwise use setTimeout
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(syncEvents, { timeout: 2000 });
+    } else {
+      // Fallback for browsers without requestIdleCallback
+      setTimeout(syncEvents, 100);
+    }
   }, [user, showToast]);
 
-  // Auth Handlers
-  const handleLogin = (loggedInUser: User) => {
+  // Background periodic sync (every 2 minutes) when user is active
+  useEffect(() => {
+    if (!user) return;
+
+    const syncInterval = setInterval(() => {
+      // Only sync if page is visible and not in background
+      if (document.visibilityState === 'visible') {
+        const syncEvents = () => {
+          getEvents()
+            .then((data) => {
+              setEvents((prev) => {
+                // Only update if data actually changed
+                const prevIds = prev.map(e => e.id).sort().join(',');
+                const newIds = data.map(e => e.id).sort().join(',');
+                if (prevIds !== newIds) {
+                  cacheEvents(data);
+                  return data;
+                }
+                return prev;
+              });
+            })
+            .catch((error) => {
+              console.error('Background sync error:', error);
+              // Silent fail for background sync
+            });
+        };
+
+        if ('requestIdleCallback' in window) {
+          requestIdleCallback(syncEvents, { timeout: 5000 });
+        } else {
+          setTimeout(syncEvents, 100);
+        }
+      }
+    }, 2 * 60 * 1000); // Every 2 minutes
+
+    return () => clearInterval(syncInterval);
+  }, [user]);
+
+  // Auth Handlers - memoized callbacks
+  const handleLogin = useCallback((loggedInUser: User) => {
     // Кэшируем пользователя при логине
     cacheUser(loggedInUser);
     setUser(loggedInUser);
-  };
+  }, []);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await logoutService();
     clearUserCache();
     clearEventsCache();
     setUser(null);
-  };
+  }, []);
 
-  // Event Handlers
-  const handleEventClick = (event: Event) => {
+  // Event Handlers - memoized callbacks
+  const handleEventClick = useCallback((event: Event) => {
     setSelectedEvent(event);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleCreateClick = () => {
+  const handleCreateClick = useCallback(() => {
     setSelectedEvent(null);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleSaveEvent = async (eventData: Omit<Event, 'id' | 'createdAt'>) => {
+  const handleSaveEvent = useCallback(async (eventData: Omit<Event, 'id' | 'createdAt'>) => {
+    if (!user) return;
+    
+    // Optimistic update: create event immediately with temporary ID
+    const tempId = `temp-${Date.now()}-${Math.random()}`;
+    const optimisticEvent: Event = {
+      ...eventData,
+      id: tempId,
+      createdAt: new Date(),
+      creatorId: user.id,
+      attendees: undefined,
+      comments: undefined,
+      history: undefined,
+      attachments: eventData.attachments || undefined
+    };
+    
+    // Update UI immediately
+    setEvents((prev) => {
+      const next = [...prev, optimisticEvent];
+      cacheEvents(next);
+      return next;
+    });
+    
+    // Close modal immediately for better UX
+    setIsModalOpen(false);
+    setTimeout(() => setSelectedEvent(null), 200);
+    
+    // Sync with server in background
     try {
-      const newEvent = await createEvent(eventData, user.id, user.fullName);
+      const serverEvent = await createEvent(eventData, user.id, user.fullName);
+      // Replace temporary event with server response
       setEvents((prev) => {
-        const next = [...prev, newEvent];
+        const next = prev.map(e => e.id === tempId ? serverEvent : e);
         cacheEvents(next);
         return next;
       });
       showToast('Event created successfully', 'success');
     } catch (e) {
       console.error("Error saving event", e);
-      showToast('Failed to create event', 'error');
-      throw e;
-    }
-  };
-
-  const handleUpdateEvent = async (id: string, eventData: Omit<Event, 'id' | 'createdAt'>) => {
-    try {
-      const updatedEvent = await updateEvent(id, eventData, user.id, user.fullName);
+      // Rollback optimistic update on error
       setEvents((prev) => {
-        const next = prev.map((e) => (e.id === id ? updatedEvent : e));
+        const next = prev.filter(e => e.id !== tempId);
         cacheEvents(next);
         return next;
       });
-      if (selectedEvent?.id === id) {
-        setSelectedEvent(updatedEvent);
-      }
+      showToast('Failed to create event', 'error');
+      // Reopen modal with previous data on error
+      setIsModalOpen(true);
+      setSelectedEvent(null);
+      throw e;
+    }
+  }, [user, showToast]);
+
+  const handleUpdateEvent = useCallback(async (id: string, eventData: Omit<Event, 'id' | 'createdAt'>) => {
+    if (!user) return;
+    
+    // Find original event for rollback
+    const originalEvent = events.find(e => e.id === id);
+    if (!originalEvent) {
+      throw new Error('Event not found');
+    }
+    
+    // Optimistic update: update event immediately
+    const optimisticEvent: Event = {
+      ...originalEvent,
+      ...eventData,
+      id: id,
+      creatorId: originalEvent.creatorId,
+      createdAt: originalEvent.createdAt
+    };
+    
+    // Update UI immediately
+    setEvents((prev) => {
+      const next = prev.map((e) => (e.id === id ? optimisticEvent : e));
+      cacheEvents(next);
+      return next;
+    });
+    setSelectedEvent(prev => prev?.id === id ? optimisticEvent : prev);
+    
+    // Close modal immediately for better UX
+    setIsModalOpen(false);
+    setTimeout(() => setSelectedEvent(null), 200);
+    
+    // Sync with server in background
+    try {
+      const serverEvent = await updateEvent(id, eventData, user.id, user.fullName);
+      // Replace optimistic event with server response
+      setEvents((prev) => {
+        const next = prev.map((e) => (e.id === id ? serverEvent : e));
+        cacheEvents(next);
+        return next;
+      });
       showToast('Event updated successfully', 'success');
     } catch (e) {
       console.error("Error updating event", e);
+      // Rollback optimistic update on error
+      setEvents((prev) => {
+        const next = prev.map((e) => (e.id === id ? originalEvent : e));
+        cacheEvents(next);
+        return next;
+      });
+      setSelectedEvent(prev => prev?.id === id ? originalEvent : prev);
       showToast('Failed to update event', 'error');
+      // Reopen modal with original data on error
+      setIsModalOpen(true);
+      setSelectedEvent(originalEvent);
       throw e;
     }
-  };
+  }, [user, showToast, events]);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
     setTimeout(() => setSelectedEvent(null), 200); // Clear after animation
-  };
+  }, []);
+
+  const handleEventUpdate = useCallback((updatedEvent: Event) => {
+    setEvents((prev) => {
+      const next = prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e));
+      cacheEvents(next);
+      return next;
+    });
+    setSelectedEvent(prev => prev?.id === updatedEvent.id ? updatedEvent : prev);
+  }, []);
+
+  // Prefetch events for a specific month (for smooth navigation)
+  const handlePrefetchMonth = useCallback((date: Date) => {
+    // Prefetch in background using requestIdleCallback
+    const prefetchEvents = () => {
+      getEvents()
+        .then((data) => {
+          // Cache the prefetched events
+          cacheEvents(data);
+        })
+        .catch((error) => {
+          console.error('Prefetch error:', error);
+          // Silent fail for prefetch
+        });
+    };
+
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(prefetchEvents, { timeout: 3000 });
+    } else {
+      setTimeout(prefetchEvents, 500);
+    }
+  }, []);
 
   // Filtered events
   const filteredEvents = useMemo(() => {
@@ -272,16 +397,7 @@ const AppContent: React.FC = () => {
     return Array.from(creatorMap.entries()).map(([id, name]) => ({ id, name }));
   }, [events]);
 
-  // Render Logic
-  if (isSessionLoading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600 mb-4"></div>
-        <p className="text-slate-500 font-medium animate-pulse">Loading application...</p>
-      </div>
-    );
-  }
-
+  // Render Logic - always show content immediately (cache loads instantly)
   if (!user) {
     return <LoginPage onLogin={handleLogin} />;
   }
@@ -292,7 +408,7 @@ const AppContent: React.FC = () => {
         user={user}
         onLogout={handleLogout}
         onAddEventClick={handleCreateClick}
-        onExportClick={() => setIsExportModalOpen(true)}
+        onExportClick={useCallback(() => setIsExportModalOpen(true), [])}
       />
 
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -316,36 +432,39 @@ const AppContent: React.FC = () => {
             </div>
           </div>
         ) : (
-          <CalendarView events={filteredEvents} onEventClick={handleEventClick} />
+          <CalendarView 
+            events={filteredEvents} 
+            onEventClick={handleEventClick}
+            onPrefetchMonth={handlePrefetchMonth}
+          />
         )}
       </main>
 
-      <EventModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        event={selectedEvent}
-        role={user.role}
-        currentUserId={user.id}
-        currentUserName={user.fullName}
-        onSave={handleSaveEvent}
-        onUpdate={handleUpdateEvent}
-        onEventUpdate={(updatedEvent) => {
-          setEvents((prev) => {
-            const next = prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e));
-            cacheEvents(next);
-            return next;
-          });
-          if (selectedEvent?.id === updatedEvent.id) {
-            setSelectedEvent(updatedEvent);
-          }
-        }}
-      />
+      {isModalOpen && (
+        <Suspense fallback={null}>
+          <EventModal
+            isOpen={isModalOpen}
+            onClose={handleCloseModal}
+            event={selectedEvent}
+            role={user.role}
+            currentUserId={user.id}
+            currentUserName={user.fullName}
+            onSave={handleSaveEvent}
+            onUpdate={handleUpdateEvent}
+            onEventUpdate={handleEventUpdate}
+          />
+        </Suspense>
+      )}
 
-      <ExportModal
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        events={filteredEvents}
-      />
+      {isExportModalOpen && (
+        <Suspense fallback={null}>
+          <ExportModal
+            isOpen={isExportModalOpen}
+            onClose={() => setIsExportModalOpen(false)}
+            events={filteredEvents}
+          />
+        </Suspense>
+      )}
 
       <footer className="bg-white border-t border-slate-200 mt-auto py-6">
         <div className="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">

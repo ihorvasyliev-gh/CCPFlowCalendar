@@ -24,7 +24,22 @@ export default defineConfig(({ mode }) => {
             main: path.resolve(__dirname, 'index.html'),
           },
           output: {
-            manualChunks: undefined,
+            manualChunks: (id) => {
+              // Split vendor chunks for better caching
+              if (id.includes('node_modules')) {
+                if (id.includes('react') || id.includes('react-dom')) {
+                  return 'vendor-react';
+                }
+                if (id.includes('@supabase')) {
+                  return 'vendor-supabase';
+                }
+                if (id.includes('lucide-react')) {
+                  return 'vendor-lucide';
+                }
+                // Other node_modules
+                return 'vendor';
+              }
+            },
           },
         },
       },

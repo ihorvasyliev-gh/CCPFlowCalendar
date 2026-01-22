@@ -2,12 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Event, UserRole, EventCategory, EventStatus, Attachment, EventComment, EventHistoryEntry } from '../types';
 import { X, MapPin, Clock, Calendar as CalendarIcon, Download, Upload, Loader2, Pencil, Tag, Users, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/date';
-import { uploadPosterToR2, uploadAttachment, addComment, deleteComment } from '../services/eventService';
+import { uploadPosterToR2, uploadAttachment, addComment, deleteComment, fetchEventDetails } from '../services/eventService';
 import { rsvpToEvent, cancelRsvp, hasUserRsvped } from '../services/rsvpService';
 import EventComments from './EventComments';
 import EventHistory from './EventHistory';
 import { validateEvent } from '../utils/validation';
 import { useTheme } from '../contexts/ThemeContext';
+import LazyImage from './LazyImage';
 
 interface EventModalProps {
   isOpen: boolean;
@@ -46,7 +47,6 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
   const [comments, setComments] = useState<EventComment[]>([]);
   const [history, setHistory] = useState<EventHistoryEntry[]>([]);
   const [attendees, setAttendees] = useState<string[]>([]);
-  const [loadingDetails, setLoadingDetails] = useState(false);
 
   const [userHasRsvped, setUserHasRsvped] = useState(false);
 
@@ -112,23 +112,20 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
 
         setIsEditing(false); // Reset to view mode initially
 
-        // LAZY LOAD: If details are missing, fetch them
+        // LAZY LOAD: If details are missing, fetch them in background (no loading state)
         const needsLoading = !event.comments || !event.history || !event.attachments || !event.attendees;
         if (needsLoading) {
-          setLoadingDetails(true);
-          import('../services/eventService').then(({ fetchEventDetails }) => {
-            fetchEventDetails(event.id).then(details => {
-              if (details.attachments) setAttachments(details.attachments);
-              if (details.comments) setComments(details.comments);
-              if (details.history) setHistory(details.history);
-              if (details.attendees) {
-                setAttendees(details.attendees);
-                // Re-check RSVP status with fresh attendees list
-                setUserHasRsvped(details.attendees.includes(currentUserId));
-              }
-            }).catch(err => console.error("Failed to load event details", err))
-              .finally(() => setLoadingDetails(false));
-          });
+          // Load in background without blocking UI
+          fetchEventDetails(event.id).then(details => {
+            if (details.attachments) setAttachments(details.attachments);
+            if (details.comments) setComments(details.comments);
+            if (details.history) setHistory(details.history);
+            if (details.attendees) {
+              setAttendees(details.attendees);
+              // Re-check RSVP status with fresh attendees list
+              setUserHasRsvped(details.attendees.includes(currentUserId));
+            }
+          }).catch(err => console.error("Failed to load event details", err));
         }
 
       } else {
@@ -256,28 +253,48 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
 
   const handleRsvp = async () => {
     if (!event) return;
-    setIsRsvping(true);
+    
+    // Optimistic update: update UI immediately
+    const wasRsvped = userHasRsvped;
+    const previousAttendees = [...(attendees || [])];
+    
+    // Update local state immediately
+    if (wasRsvped) {
+      setUserHasRsvped(false);
+      const newAttendees = attendees.filter(id => id !== currentUserId);
+      setAttendees(newAttendees);
+      if (onEventUpdate && event) {
+        const updatedEvent = { ...event, attendees: newAttendees };
+        onEventUpdate(updatedEvent);
+      }
+    } else {
+      setUserHasRsvped(true);
+      const newAttendees = [...attendees, currentUserId];
+      setAttendees(newAttendees);
+      if (onEventUpdate && event) {
+        const updatedEvent = { ...event, attendees: newAttendees };
+        onEventUpdate(updatedEvent);
+      }
+    }
+    
+    // Sync with server in background (no loading state)
     try {
-      if (userHasRsvped) {
+      if (wasRsvped) {
         await cancelRsvp(event.id, currentUserId);
-        setUserHasRsvped(false);
-        if (onEventUpdate && event) {
-          const updatedEvent = { ...event, attendees: (event.attendees || []).filter(id => id !== currentUserId) };
-          onEventUpdate(updatedEvent);
-        }
       } else {
         await rsvpToEvent(event.id, currentUserId);
-        setUserHasRsvped(true);
-        if (onEventUpdate && event) {
-          const updatedEvent = { ...event, attendees: [...(event.attendees || []), currentUserId] };
-          onEventUpdate(updatedEvent);
-        }
       }
     } catch (err) {
-      console.error(err);
-      alert('Failed to update RSVP');
-    } finally {
-      setIsRsvping(false);
+      console.error('Failed to sync RSVP with server:', err);
+      // Rollback optimistic update on error
+      setUserHasRsvped(wasRsvped);
+      setAttendees(previousAttendees);
+      if (onEventUpdate && event) {
+        const updatedEvent = { ...event, attendees: previousAttendees };
+        onEventUpdate(updatedEvent);
+      }
+      // Show error toast (non-blocking)
+      alert('Failed to update RSVP. Please try again.');
     }
   };
 
@@ -298,21 +315,49 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
 
   const handleAddComment = async (content: string) => {
     if (!event) return;
+    
+    // Optimistic update: add comment immediately with temporary ID
+    const tempId = `temp-${Date.now()}-${Math.random()}`;
+    const optimisticComment: EventComment = {
+      id: tempId,
+      eventId: event.id,
+      userId: currentUserId,
+      userName: currentUserName,
+      content: content,
+      createdAt: new Date()
+    };
+    
+    // Update local state immediately
+    setComments(prev => [...prev, optimisticComment]);
+    if (onEventUpdate) {
+      const updatedEvent = { ...event, comments: [...(event.comments || []), optimisticComment] };
+      onEventUpdate(updatedEvent);
+    }
+    
+    // Sync with server in background
     try {
-      const newComment = await addComment(event.id, currentUserId, currentUserName, content);
-      setComments(prev => [...prev, newComment]);
-      // Update the event object if needed for the parent, or just trust the local state for now
-      // If we really need to update parent state, we'd need to construct a partial event update
+      const serverComment = await addComment(event.id, currentUserId, currentUserName, content);
+      // Replace temporary comment with server response
+      setComments(prev => prev.map(c => c.id === tempId ? serverComment : c));
       if (onEventUpdate) {
-        // Construct a partial update or just trigger a refresh if critical
-        // For now, we are optimizing for speed so we just update local state
-        // But to keep consistency we might want to tell parent current comment count
-        const updatedEvent = { ...event, comments: [...(event.comments || []), newComment] };
+        const updatedEvent = { 
+          ...event, 
+          comments: (event.comments || []).map(c => c.id === tempId ? serverComment : c)
+        };
         onEventUpdate(updatedEvent);
       }
     } catch (err) {
-      console.error('Failed to add comment', err);
-      throw err;
+      console.error('Failed to sync comment with server:', err);
+      // Rollback optimistic update on error
+      setComments(prev => prev.filter(c => c.id !== tempId));
+      if (onEventUpdate) {
+        const updatedEvent = { 
+          ...event, 
+          comments: (event.comments || []).filter(c => c.id !== tempId)
+        };
+        onEventUpdate(updatedEvent);
+      }
+      throw err; // Re-throw to show error in UI
     }
   };
 
@@ -401,7 +446,11 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
                   <div className="rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800">
                     {event.posterUrl && (
                       <div className="relative group">
-                        <img src={event.posterUrl} alt={event.title} className="w-full h-56 object-cover" />
+                        <LazyImage 
+                          src={event.posterUrl} 
+                          alt={event.title} 
+                          className="w-full h-56" 
+                        />
                         <a href={event.posterUrl} download className="absolute bottom-3 right-3 p-2 bg-white/90 backdrop-blur rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-all text-slate-700 hover:scale-105">
                           <Download className="h-4 w-4" />
                         </a>
@@ -488,12 +537,6 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
                   Add to Google Calendar
                 </button>
 
-                {loadingDetails && (
-                  <div className="flex justify-center p-4">
-                    <Loader2 className="animate-spin h-5 w-5 text-slate-400" />
-                  </div>
-                )}
-
                 <EventComments
                   comments={comments}
                   currentUserId={currentUserId}
@@ -565,7 +608,15 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Poster Image</label>
                   <div onClick={() => fileInputRef.current?.click()} className="border border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-4 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors">
-                    {previewUrl ? <img src={previewUrl} className="h-32 mx-auto object-contain rounded-lg" /> : <Upload className="h-8 w-8 mx-auto text-slate-400 mb-2" />}
+                    {previewUrl ? (
+                      <LazyImage 
+                        src={previewUrl} 
+                        alt="Preview" 
+                        className="h-32 mx-auto object-contain rounded-lg" 
+                      />
+                    ) : (
+                      <Upload className="h-8 w-8 mx-auto text-slate-400 mb-2" />
+                    )}
                     <span className="text-xs text-brand-600 font-bold">{previewUrl ? 'Change Image' : 'Click to Upload'}</span>
                   </div>
                   <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
@@ -643,4 +694,25 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
   );
 };
 
-export default EventModal;
+// Memoize component to prevent unnecessary re-renders
+export default React.memo(EventModal, (prevProps, nextProps) => {
+  // Only re-render if critical props changed
+  if (prevProps.isOpen !== nextProps.isOpen) return false;
+  if (prevProps.role !== nextProps.role) return false;
+  if (prevProps.currentUserId !== nextProps.currentUserId) return false;
+  if (prevProps.currentUserName !== nextProps.currentUserName) return false;
+  
+  // Compare event objects
+  if (prevProps.event?.id !== nextProps.event?.id) return false;
+  if (prevProps.event?.title !== nextProps.event?.title) return false;
+  if (prevProps.event?.date?.getTime() !== nextProps.event?.date?.getTime()) return false;
+  if (prevProps.event?.status !== nextProps.event?.status) return false;
+  
+  // Compare callbacks
+  if (prevProps.onClose !== nextProps.onClose) return false;
+  if (prevProps.onSave !== nextProps.onSave) return false;
+  if (prevProps.onUpdate !== nextProps.onUpdate) return false;
+  if (prevProps.onEventUpdate !== nextProps.onEventUpdate) return false;
+  
+  return true; // Props are equal, skip re-render
+});

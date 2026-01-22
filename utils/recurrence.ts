@@ -10,11 +10,71 @@ const isDateWithinRecurrenceRange = (date: Date, start: Date, rule: RecurrenceRu
   return true;
 };
 
+// Cache for expanded recurring events
+interface CacheEntry {
+  events: Event[];
+  rangeStart: number;
+  rangeEnd: number;
+  eventIds: string;
+  timestamp: number;
+}
+
+const CACHE_SIZE = 10; // Keep last 10 results
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const expansionCache: CacheEntry[] = [];
+
+/**
+ * Generate cache key from events and date range
+ */
+const getCacheKey = (events: Event[], rangeStart: Date, rangeEnd: Date): string => {
+  const eventIds = events.map(e => e.id).sort().join(',');
+  return `${eventIds}_${rangeStart.getTime()}_${rangeEnd.getTime()}`;
+};
+
+/**
+ * Find cached result
+ */
+const getCachedResult = (cacheKey: string, rangeStart: Date, rangeEnd: Date): Event[] | null => {
+  const now = Date.now();
+  const entry = expansionCache.find(
+    e => e.eventIds === cacheKey.split('_')[0] &&
+         e.rangeStart === rangeStart.getTime() &&
+         e.rangeEnd === rangeEnd.getTime() &&
+         (now - e.timestamp) < CACHE_TTL
+  );
+  return entry ? entry.events : null;
+};
+
+/**
+ * Store result in cache
+ */
+const setCachedResult = (cacheKey: string, rangeStart: Date, rangeEnd: Date, result: Event[]): void => {
+  // Remove old entries if cache is full
+  if (expansionCache.length >= CACHE_SIZE) {
+    expansionCache.shift();
+  }
+  
+  expansionCache.push({
+    events: result,
+    rangeStart: rangeStart.getTime(),
+    rangeEnd: rangeEnd.getTime(),
+    eventIds: cacheKey.split('_')[0],
+    timestamp: Date.now()
+  });
+};
+
 /**
  * Expands a list of events into individual instances for a specific date range.
  * Handles recurring events by generating instances.
+ * Results are cached for performance.
  */
 export const expandRecurringEvents = (events: Event[], rangeStart: Date, rangeEnd: Date): Event[] => {
+  // Check cache first
+  const cacheKey = getCacheKey(events, rangeStart, rangeEnd);
+  const cached = getCachedResult(cacheKey, rangeStart, rangeEnd);
+  if (cached) {
+    return cached;
+  }
   const expandedEvents: Event[] = [];
 
   events.forEach(event => {
@@ -117,5 +177,15 @@ export const expandRecurringEvents = (events: Event[], rangeStart: Date, rangeEn
     // the loop handles it by starting slightly before rangeStart.
   });
 
+  // Cache the result
+  setCachedResult(cacheKey, rangeStart, rangeEnd, expandedEvents);
+  
   return expandedEvents;
+};
+
+/**
+ * Clear the expansion cache (useful when events are updated)
+ */
+export const clearRecurrenceCache = (): void => {
+  expansionCache.length = 0;
 };

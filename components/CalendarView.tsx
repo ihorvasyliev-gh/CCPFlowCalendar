@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Event, ViewMode, EventCategory } from '../types';
 import { getDaysInMonth, getFirstDayOfMonth, isSameDay, addMonths } from '../utils/date';
 import { expandRecurringEvents } from '../utils/recurrence';
@@ -8,9 +8,10 @@ import { useTheme } from '../contexts/ThemeContext';
 interface CalendarViewProps {
   events: Event[];
   onEventClick: (event: Event) => void;
+  onPrefetchMonth?: (date: Date) => void;
 }
 
-const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPrefetchMonth }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const { theme } = useTheme();
@@ -18,10 +19,45 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick }) => 
   const daysInMonth = getDaysInMonth(currentDate);
   const firstDay = getFirstDayOfMonth(currentDate);
 
-  // Month navigation
-  const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-  const prevMonth = () => setCurrentDate(addMonths(currentDate, -1));
-  const goToday = () => setCurrentDate(new Date());
+  // Month navigation - memoized callbacks
+  const nextMonth = useCallback(() => {
+    setCurrentDate(prev => {
+      const next = addMonths(prev, 1);
+      // Prefetch next month on navigation
+      if (onPrefetchMonth) {
+        onPrefetchMonth(addMonths(next, 1));
+      }
+      return next;
+    });
+  }, [onPrefetchMonth]);
+  
+  const prevMonth = useCallback(() => {
+    setCurrentDate(prev => {
+      const prevMonth = addMonths(prev, -1);
+      // Prefetch previous month on navigation
+      if (onPrefetchMonth) {
+        onPrefetchMonth(addMonths(prevMonth, -1));
+      }
+      return prevMonth;
+    });
+  }, [onPrefetchMonth]);
+  
+  const goToday = useCallback(() => setCurrentDate(new Date()), []);
+
+  // Prefetch next/previous month on hover over navigation buttons
+  const handleNextMonthHover = useCallback(() => {
+    if (onPrefetchMonth) {
+      const nextMonthDate = addMonths(currentDate, 1);
+      onPrefetchMonth(nextMonthDate);
+    }
+  }, [currentDate, onPrefetchMonth]);
+
+  const handlePrevMonthHover = useCallback(() => {
+    if (onPrefetchMonth) {
+      const prevMonthDate = addMonths(currentDate, -1);
+      onPrefetchMonth(prevMonthDate);
+    }
+  }, [currentDate, onPrefetchMonth]);
 
   // Grid Data Generation
   const calendarDays = useMemo(() => {
@@ -99,8 +135,20 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick }) => 
         <div className="flex items-center gap-4">
           <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white w-48">{monthName}</h2>
           <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
-            <button onClick={prevMonth} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-md text-slate-500 dark:text-slate-400 transition-all shadow-sm"><ChevronLeft className="h-4 w-4" /></button>
-            <button onClick={nextMonth} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-md text-slate-500 dark:text-slate-400 transition-all shadow-sm"><ChevronRight className="h-4 w-4" /></button>
+            <button 
+              onClick={prevMonth} 
+              onMouseEnter={handlePrevMonthHover}
+              className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-md text-slate-500 dark:text-slate-400 transition-all shadow-sm"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button 
+              onClick={nextMonth} 
+              onMouseEnter={handleNextMonthHover}
+              className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-md text-slate-500 dark:text-slate-400 transition-all shadow-sm"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
           <button onClick={goToday} className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">Today</button>
         </div>
@@ -222,4 +270,23 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick }) => 
   );
 };
 
-export default CalendarView;
+// Memoize component to prevent unnecessary re-renders
+export default React.memo(CalendarView, (prevProps, nextProps) => {
+  // Only re-render if events array changed (by length or IDs)
+  if (prevProps.events.length !== nextProps.events.length) return false;
+  
+  // Check if any event IDs changed
+  const prevIds = prevProps.events.map(e => e.id).sort().join(',');
+  const nextIds = nextProps.events.map(e => e.id).sort().join(',');
+  if (prevIds !== nextIds) return false;
+  
+  // Check if event dates changed (for recurring events)
+  const prevDates = prevProps.events.map(e => e.date.getTime()).sort().join(',');
+  const nextDates = nextProps.events.map(e => e.date.getTime()).sort().join(',');
+  if (prevDates !== nextDates) return false;
+  
+  if (prevProps.onEventClick !== nextProps.onEventClick) return false;
+  if (prevProps.onPrefetchMonth !== nextProps.onPrefetchMonth) return false;
+  
+  return true; // Props are equal, skip re-render
+});

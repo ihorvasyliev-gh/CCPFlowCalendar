@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { MessageCircle, Send, User, Trash2 } from 'lucide-react';
 import { EventComment } from '../types';
 
@@ -18,20 +18,20 @@ const EventComments: React.FC<EventCommentsProps> = ({
   onDeleteComment
 }) => {
   const [newComment, setNewComment] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
 
-    setIsSubmitting(true);
+    const commentText = newComment.trim();
+    setNewComment(''); // Clear input immediately for better UX
+    
     try {
-      await onAddComment(newComment.trim());
-      setNewComment('');
+      await onAddComment(commentText);
     } catch (err) {
       console.error('Failed to add comment', err);
-    } finally {
-      setIsSubmitting(false);
+      // Restore comment text on error so user can retry
+      setNewComment(commentText);
     }
   };
 
@@ -91,8 +91,8 @@ const EventComments: React.FC<EventCommentsProps> = ({
         </div>
         <button
           type="submit"
-          disabled={!newComment.trim() || isSubmitting}
-          className="flex-shrink-0 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={!newComment.trim()}
+          className="flex-shrink-0 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           <Send className="h-4 w-4" />
         </button>
@@ -101,4 +101,18 @@ const EventComments: React.FC<EventCommentsProps> = ({
   );
 };
 
-export default EventComments;
+// Memoize component to prevent unnecessary re-renders
+export default React.memo(EventComments, (prevProps, nextProps) => {
+  // Only re-render if comments array changed (by length or IDs)
+  if (prevProps.comments.length !== nextProps.comments.length) return false;
+  if (prevProps.currentUserId !== nextProps.currentUserId) return false;
+  if (prevProps.currentUserName !== nextProps.currentUserName) return false;
+  if (prevProps.onDeleteComment !== nextProps.onDeleteComment) return false;
+  
+  // Check if any comment IDs changed
+  const prevIds = prevProps.comments.map(c => c.id).join(',');
+  const nextIds = nextProps.comments.map(c => c.id).join(',');
+  if (prevIds !== nextIds) return false;
+  
+  return true; // Props are equal, skip re-render
+});
