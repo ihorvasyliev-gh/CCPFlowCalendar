@@ -67,7 +67,7 @@ const AppContent: React.FC = () => {
         // Пользователь найден в кэше - восстанавливаем мгновенно
         userIdRef.current = cachedUser.id;
         setUser(cachedUser);
-        
+
         // Завершаем инициализацию сразу (мгновенно!)
         if (!isInitializedRef.current && isMounted) {
           isInitializedRef.current = true;
@@ -87,7 +87,7 @@ const AppContent: React.FC = () => {
             }
             return;
           }
-          
+
           // Обновляем данные пользователя в фоне (не блокируем UI)
           fetchUserProfileFromServer(session.user.id).then((freshUser) => {
             if (freshUser && isMounted) {
@@ -109,7 +109,7 @@ const AppContent: React.FC = () => {
               isInitializedRef.current = true;
               setIsSessionLoading(false);
               const elapsed = performance.now() - initStartTime;
-              console.log(`Session initialized in ${elapsed.toFixed(0)}ms (from server)`);
+              // console.log(`Session initialized in ${elapsed.toFixed(0)}ms (from server)`);
             }
           });
         } else {

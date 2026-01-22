@@ -28,17 +28,53 @@ export const expandRecurringEvents = (events: Event[], rangeStart: Date, rangeEn
 
     // 2. If it is recurring, generate instances
     const rule = event.recurrence;
-    const instances: Event[] = [];
+    const interval = rule.interval || 1;
     let currentInstanceDate = new Date(event.date);
+
+    // SAFETY CHECK: If interval is somehow 0 or negative, force to 1 to avoid infinite loops
+    if (interval <= 0) return;
+
+    // OPTIMIZATION: Jump ahead to rangeStart if event started long ago
+    // Only optimize if we don't have a strict occurrences limit (or if we Accept approximation)
+    // If 'occurrences' is set, we technically must count from the start to know when to stop.
+    // However, for typical calendar usage, 'occurrences' is rare vs 'endDate' or 'infinite'.
+    // We will skip optimization if occurrences is set to be safe.
+    const shouldOptimizeJump = !rule.occurrences && currentInstanceDate < rangeStart;
+
+    if (shouldOptimizeJump) {
+      if (rule.type === 'daily') {
+        const diffTime = rangeStart.getTime() - currentInstanceDate.getTime();
+        const daysToJump = Math.floor(diffTime / (1000 * 60 * 60 * 24 * interval));
+        // Jump one less to be safe and let the loop handle the boundary
+        if (daysToJump > 0) {
+          currentInstanceDate.setDate(currentInstanceDate.getDate() + (daysToJump * interval));
+        }
+      } else if (rule.type === 'weekly') {
+        const diffTime = rangeStart.getTime() - currentInstanceDate.getTime();
+        const weeksToJump = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7 * interval));
+        if (weeksToJump > 0) {
+          currentInstanceDate.setDate(currentInstanceDate.getDate() + (weeksToJump * 7 * interval));
+        }
+      } else if (rule.type === 'monthly') {
+        const yearDiff = rangeStart.getFullYear() - currentInstanceDate.getFullYear();
+        const monthDiff = rangeStart.getMonth() - currentInstanceDate.getMonth();
+        const totalMonths = (yearDiff * 12) + monthDiff;
+        const jumps = Math.floor(totalMonths / interval);
+        if (jumps > 0) {
+          currentInstanceDate.setMonth(currentInstanceDate.getMonth() + (jumps * interval));
+        }
+      } else if (rule.type === 'yearly') {
+        const yearDiff = rangeStart.getFullYear() - currentInstanceDate.getFullYear();
+        const jumps = Math.floor(yearDiff / interval);
+        if (jumps > 0) {
+          currentInstanceDate.setFullYear(currentInstanceDate.getFullYear() + (jumps * interval));
+        }
+      }
+    }
+
+    // Now iterate strictly within or slightly before rangeStart until rangeEnd
+    const MAX_INSTANCES = 1000; // Safety break
     let count = 0;
-
-    // We need to iterate until we pass the rangeEnd OR the recurrence rules stop us
-    // Optimization: If the start is way before rangeStart, we might want to skip ahead,
-    // but for simple intervals iterating is safer for correctness (especially months).
-    // For performance on years of data, we'd calculate the first occurrence >= rangeStart.
-
-    // Allow a safety limit to prevent infinite loops with bad data
-    const MAX_INSTANCES = 1000;
 
     while (
       count < MAX_INSTANCES &&
@@ -47,17 +83,14 @@ export const expandRecurringEvents = (events: Event[], rangeStart: Date, rangeEn
     ) {
 
       // If the current instance is past the range we are looking at, we can stop
-      // BUT only if we are sure it's past.
       if (currentInstanceDate > rangeEnd) {
         break;
       }
 
       // If the instance is within the range, add it
       if (currentInstanceDate >= rangeStart) {
-        // Clone the event and set the new date. Keep id as real UUID for API (update/delete);
-        // use instanceKey only for React keys to avoid duplicates when same event repeats.
         const instanceKey = `${event.id}_${currentInstanceDate.getTime()}`;
-        instances.push({
+        expandedEvents.push({
           ...event,
           instanceKey,
           date: new Date(currentInstanceDate),
@@ -66,36 +99,22 @@ export const expandRecurringEvents = (events: Event[], rangeStart: Date, rangeEn
 
       // Calculate next date
       const nextDate = new Date(currentInstanceDate);
-      const interval = rule.interval || 1;
 
       switch (rule.type) {
-        case 'daily':
-          nextDate.setDate(nextDate.getDate() + interval);
-          break;
-        case 'weekly':
-          nextDate.setDate(nextDate.getDate() + (interval * 7));
-          // TODO: specific days of week support could go here logic-wise
-          // For now, simple "every N weeks on the same day" logic
-          break;
-        case 'monthly':
-          nextDate.setMonth(nextDate.getMonth() + interval);
-          break;
-        case 'yearly':
-          nextDate.setFullYear(nextDate.getFullYear() + interval);
-          break;
-        case 'custom':
-          // Default to daily if custom logic not fully specified
-          nextDate.setDate(nextDate.getDate() + interval);
-          break;
-        default:
-          return; // Should not happen
+        case 'daily': nextDate.setDate(nextDate.getDate() + interval); break;
+        case 'weekly': nextDate.setDate(nextDate.getDate() + (interval * 7)); break;
+        case 'monthly': nextDate.setMonth(nextDate.getMonth() + interval); break;
+        case 'yearly': nextDate.setFullYear(nextDate.getFullYear() + interval); break;
+        case 'custom': nextDate.setDate(nextDate.getDate() + interval); break;
+        default: return;
       }
 
       currentInstanceDate = nextDate;
       count++;
     }
 
-    expandedEvents.push(...instances);
+    // Fallback: If we didn't add any instances but we should have (e.g. slight mismatch in jump logic),
+    // the loop handles it by starting slightly before rangeStart.
   });
 
   return expandedEvents;

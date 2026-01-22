@@ -87,7 +87,7 @@ const fetchRelatedBatch = async (eventIds: string[]): Promise<RelatedData> => {
   return { attachmentsByEvent, commentsByEvent, historyByEvent, rsvpsByEvent };
 };
 
-/** Загрузка связанных данных для одного события (create/update/addComment) */
+// Загрузка связанных данных для одного события (create/update/addComment)
 const fetchRelatedForOne = async (eventId: string): Promise<RelatedData> => {
   const [attachmentsRes, commentsRes, historyRes, rsvpsRes] = await Promise.all([
     supabase
@@ -147,29 +147,50 @@ const fetchRelatedForOne = async (eventId: string): Promise<RelatedData> => {
   };
 };
 
+/**
+ * Lazy load full details for an event
+ */
+export const fetchEventDetails = async (eventId: string): Promise<Partial<Event>> => {
+  const related = await fetchRelatedForOne(eventId);
+  const attachments = related.attachmentsByEvent[eventId] || [];
+  const comments = related.commentsByEvent[eventId] || [];
+  const history = related.historyByEvent[eventId] || [];
+  const attendees = related.rsvpsByEvent[eventId] || [];
+
+  return {
+    attachments,
+    comments,
+    history,
+    attendees
+  };
+}
+
 // Преобразуем данные из Supabase (snake_case) в TypeScript типы (camelCase)
 const mapSupabaseEventToEvent = async (
   supabaseEvent: any,
-  related?: RelatedData
+  related?: RelatedData,
+  skipRelatedFetch = false
 ): Promise<Event> => {
   const eventId = supabaseEvent.id;
-  let attachments: Attachment[];
-  let comments: EventComment[];
-  let history: EventHistoryEntry[];
-  let attendees: string[];
+  let attachments: Attachment[] | undefined;
+  let comments: EventComment[] | undefined;
+  let history: EventHistoryEntry[] | undefined;
+  let attendees: string[] | undefined;
 
   if (related) {
-    attachments = related.attachmentsByEvent[eventId] ?? [];
-    comments = related.commentsByEvent[eventId] ?? [];
-    history = related.historyByEvent[eventId] ?? [];
-    attendees = related.rsvpsByEvent[eventId] ?? [];
-  } else {
+    attachments = related.attachmentsByEvent[eventId];
+    comments = related.commentsByEvent[eventId];
+    history = related.historyByEvent[eventId];
+    attendees = related.rsvpsByEvent[eventId];
+  } else if (!skipRelatedFetch) {
+    // Create/Update case: fetch everything immediately to return full object
     const one = await fetchRelatedForOne(eventId);
     attachments = one.attachmentsByEvent[eventId] ?? [];
     comments = one.commentsByEvent[eventId] ?? [];
     history = one.historyByEvent[eventId] ?? [];
     attendees = one.rsvpsByEvent[eventId] ?? [];
   }
+  // If skipRelatedFetch is true and related is undefined, fields remain undefined (Lazy Load)
 
   let recurrence: RecurrenceRule | undefined;
   if (supabaseEvent.recurrence_type && supabaseEvent.recurrence_type !== 'none') {
@@ -182,8 +203,9 @@ const mapSupabaseEventToEvent = async (
     };
   }
 
-  const posterAttachment = attachments.find(att => att.type === 'image');
-  const posterUrl = posterAttachment?.url || supabaseEvent.poster_url || undefined;
+  // Use poster_url directly, or fallback to first image attachment if available
+  const posterAttachment = attachments?.find(att => att.type === 'image');
+  const posterUrl = supabaseEvent.poster_url || posterAttachment?.url || undefined;
 
   return {
     id: supabaseEvent.id,
@@ -192,16 +214,16 @@ const mapSupabaseEventToEvent = async (
     date: new Date(supabaseEvent.date),
     location: supabaseEvent.location || '',
     posterUrl,
-    attachments: attachments.length > 0 ? attachments : undefined,
+    attachments: attachments && attachments.length > 0 ? attachments : undefined,
     category: supabaseEvent.category || undefined,
     tags: supabaseEvent.tags || [],
     status: supabaseEvent.status,
     recurrence,
     rsvpEnabled: supabaseEvent.rsvp_enabled || false,
     maxAttendees: supabaseEvent.max_attendees || undefined,
-    attendees: attendees.length > 0 ? attendees : undefined,
-    comments: comments.length > 0 ? comments : undefined,
-    history: history.length > 0 ? history : undefined,
+    attendees: attendees && attendees.length > 0 ? attendees : undefined,
+    comments: comments && comments.length > 0 ? comments : undefined,
+    history: history && history.length > 0 ? history : undefined,
     creatorId: supabaseEvent.creator_id,
     createdAt: new Date(supabaseEvent.created_at)
   };
@@ -222,11 +244,10 @@ export const getEvents = async (): Promise<Event[]> => {
     return [];
   }
 
-  const eventIds = eventsData.map((e: any) => e.id);
-  const related = await fetchRelatedBatch(eventIds);
-
+  // OPTIMIZATION: Do NOT fetch related data (comments, history, etc) for the list view.
+  // Passing skipRelatedFetch=true lazy loads these on demand in EventModal.
   const events = await Promise.all(
-    eventsData.map((e: any) => mapSupabaseEventToEvent(e, related))
+    eventsData.map((e: any) => mapSupabaseEventToEvent(e, undefined, true))
   );
   return events;
 };
