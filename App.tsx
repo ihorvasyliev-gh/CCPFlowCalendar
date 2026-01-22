@@ -376,6 +376,10 @@ const AppContent: React.FC = () => {
     }
   }, []);
 
+  const handleExportClick = useCallback(() => {
+    setIsExportModalOpen(true);
+  }, []);
+
   // Filtered events
   const filteredEvents = useMemo(() => {
     return filterEvents(events, { ...filters, search: searchQuery });
@@ -408,7 +412,7 @@ const AppContent: React.FC = () => {
         user={user}
         onLogout={handleLogout}
         onAddEventClick={handleCreateClick}
-        onExportClick={useCallback(() => setIsExportModalOpen(true), [])}
+        onExportClick={handleExportClick}
       />
 
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
