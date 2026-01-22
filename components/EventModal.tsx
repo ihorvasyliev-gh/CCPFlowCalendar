@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Event, UserRole, EventCategory, EventStatus, Attachment, EventComment, EventHistoryEntry, EventCategoryItem } from '../types';
 import { X, MapPin, Clock, Calendar as CalendarIcon, Download, Upload, Loader2, Pencil, Tag, Users, CheckCircle, XCircle, Trash2, Plus } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/date';
-import { uploadPosterToR2, uploadAttachment, addComment, deleteComment, fetchEventDetails } from '../services/eventService';
+import { uploadPosterToR2, uploadAttachment, addComment, deleteComment, fetchEventDetails, deleteEvent, deleteRecurrenceInstance } from '../services/eventService';
 import { rsvpToEvent, cancelRsvp, hasUserRsvped } from '../services/rsvpService';
 import { getCategories, createCategory } from '../services/categoryService';
 import EventComments from './EventComments';
@@ -21,13 +21,17 @@ interface EventModalProps {
   onSave?: (eventData: Omit<Event, 'id' | 'createdAt'>) => Promise<void>;
   onUpdate?: (id: string, eventData: Omit<Event, 'id' | 'createdAt'>) => Promise<void>;
   onEventUpdate?: (event: Event) => void; // For RSVP and comment updates
+  onDelete?: (id: string) => Promise<void>; // For event deletion
+  onDeleteInstance?: (eventId: string, instanceDate: Date) => Promise<void>; // For instance deletion
 }
 
-const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, currentUserId = '1', currentUserName = 'User', onSave, onUpdate, onEventUpdate }) => {
+const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, currentUserId = '1', currentUserName = 'User', onSave, onUpdate, onEventUpdate, onDelete, onDeleteInstance }) => {
   const { theme } = useTheme();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isRsvping, setIsRsvping] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form State
   const [title, setTitle] = useState('');
@@ -423,6 +427,39 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
     window.open(googleUrl, '_blank');
   };
 
+  const handleDeleteClick = () => {
+    if (!event) return;
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async (deleteAll: boolean) => {
+    if (!event || !onDelete) return;
+
+    setIsDeleting(true);
+    try {
+      if (deleteAll) {
+        // Удаляем всю серию
+        await deleteEvent(event.id, currentUserId, currentUserName);
+        await onDelete(event.id);
+      } else {
+        // Удаляем только этот экземпляр
+        await deleteRecurrenceInstance(event.id, event.date, currentUserId, currentUserName);
+        // Уведомляем родительский компонент об удалении экземпляра
+        if (onDeleteInstance) {
+          await onDeleteInstance(event.id, event.date);
+        }
+        // Закрываем модальное окно, так как этот экземпляр больше не существует
+        onClose();
+      }
+      setShowDeleteDialog(false);
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      alert('Failed to delete event. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
       <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:flex sm:items-center sm:p-0">
@@ -471,13 +508,22 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
                       {event.title}
                     </h2>
                     {role === UserRole.ADMIN && (
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-lg transition-all"
-                        title="Edit Event"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-lg transition-all"
+                          title="Edit Event"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={handleDeleteClick}
+                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                          title="Delete Event"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -718,6 +764,75 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, role, c
               </form>
             )}
           </div>
+
+          {/* Delete Confirmation Dialog */}
+          {showDeleteDialog && event && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" onClick={() => !isDeleting && setShowDeleteDialog(false)}>
+              <div className={`relative rounded-xl shadow-xl border border-white/20 w-full max-w-md mx-4 ${theme === 'dark' ? 'glass-panel-dark' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+                <div className="px-6 py-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-800">
+                  <h3 className={`text-lg font-semibold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                    Delete Event
+                  </h3>
+                  <button onClick={() => !isDeleting && setShowDeleteDialog(false)} className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-300 transition-colors focus:outline-none" disabled={isDeleting}>
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="px-6 py-6">
+                  {event.recurrence && event.recurrence.type !== 'none' ? (
+                    <div className="space-y-4">
+                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                        This is a recurring event. What would you like to delete?
+                      </p>
+                      <div className="space-y-3">
+                        <button
+                          onClick={() => handleDeleteConfirm(false)}
+                          disabled={isDeleting}
+                          className="w-full px-4 py-3 text-left rounded-lg border-2 border-slate-200 dark:border-slate-700 hover:border-brand-500 dark:hover:border-brand-500 transition-all disabled:opacity-50"
+                        >
+                          <div className="font-semibold text-slate-900 dark:text-white">Delete only this occurrence</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            Remove this specific instance from the series
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteConfirm(true)}
+                          disabled={isDeleting}
+                          className="w-full px-4 py-3 text-left rounded-lg border-2 border-red-200 dark:border-red-800 hover:border-red-500 dark:hover:border-red-500 transition-all disabled:opacity-50"
+                        >
+                          <div className="font-semibold text-red-600 dark:text-red-400">Delete entire series</div>
+                          <div className="text-xs text-red-500 dark:text-red-400 mt-1">
+                            Remove all occurrences of this event
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                        Are you sure you want to delete "{event.title}"? This action cannot be undone.
+                      </p>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleDeleteConfirm(true)}
+                          disabled={isDeleting}
+                          className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all disabled:opacity-50 font-medium"
+                        >
+                          {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : 'Delete'}
+                        </button>
+                        <button
+                          onClick={() => setShowDeleteDialog(false)}
+                          disabled={isDeleting}
+                          className="flex-1 px-4 py-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 transition-all disabled:opacity-50 font-medium"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Add Category Modal */}
           {showAddCategoryModal && (

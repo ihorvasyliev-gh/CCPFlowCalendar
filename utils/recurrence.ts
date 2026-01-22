@@ -1,4 +1,5 @@
 import { Event, RecurrenceRule } from '../types';
+import { getRecurrenceExceptions } from '../services/eventService';
 
 /**
  * Checks if a date is actively within the recurrence range
@@ -67,12 +68,21 @@ const setCachedResult = (cacheKey: string, rangeStart: Date, rangeEnd: Date, res
  * Expands a list of events into individual instances for a specific date range.
  * Handles recurring events by generating instances.
  * Results are cached for performance.
+ * 
+ * Note: This function is synchronous for performance, but exceptions are loaded
+ * asynchronously. For best results, preload exceptions before calling this function.
  */
-export const expandRecurringEvents = (events: Event[], rangeStart: Date, rangeEnd: Date): Event[] => {
-  // Check cache first
+export const expandRecurringEvents = (
+  events: Event[], 
+  rangeStart: Date, 
+  rangeEnd: Date,
+  exceptionsMap?: Map<string, Date[]>
+): Event[] => {
+  // Check cache first (but cache key should include exceptions if provided)
   const cacheKey = getCacheKey(events, rangeStart, rangeEnd);
   const cached = getCachedResult(cacheKey, rangeStart, rangeEnd);
-  if (cached) {
+  if (cached && !exceptionsMap) {
+    // Only use cache if no exceptions map is provided (cache doesn't account for exceptions)
     return cached;
   }
   const expandedEvents: Event[] = [];
@@ -147,14 +157,27 @@ export const expandRecurringEvents = (events: Event[], rangeStart: Date, rangeEn
         break;
       }
 
-      // If the instance is within the range, add it
+      // If the instance is within the range, check if it's not excluded
       if (currentInstanceDate >= rangeStart) {
-        const instanceKey = `${event.id}_${currentInstanceDate.getTime()}`;
-        expandedEvents.push({
-          ...event,
-          instanceKey,
-          date: new Date(currentInstanceDate),
+        // Check if this instance is excluded
+        const exceptions = exceptionsMap?.get(event.id);
+        const isExcluded = exceptions?.some(excDate => {
+          const excDateOnly = new Date(excDate);
+          excDateOnly.setHours(0, 0, 0, 0);
+          const instanceDateOnly = new Date(currentInstanceDate);
+          instanceDateOnly.setHours(0, 0, 0, 0);
+          return excDateOnly.getTime() === instanceDateOnly.getTime();
         });
+
+        // Only add if not excluded
+        if (!isExcluded) {
+          const instanceKey = `${event.id}_${currentInstanceDate.getTime()}`;
+          expandedEvents.push({
+            ...event,
+            instanceKey,
+            date: new Date(currentInstanceDate),
+          });
+        }
       }
 
       // Calculate next date

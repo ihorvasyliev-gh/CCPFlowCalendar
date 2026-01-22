@@ -9,12 +9,13 @@ import { CalendarDaySkeleton } from './components/SkeletonLoader';
 import { ToastProvider, useToast } from './contexts/ToastContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { User, Event, EventFilters } from './types';
-import { getEvents, createEvent, updateEvent } from './services/eventService';
+import { getEvents, createEvent, updateEvent, deleteEvent, deleteRecurrenceInstance, getRecurrenceExceptions } from './services/eventService';
 import { logout as logoutService, getCurrentUser } from './services/authService';
 import { supabase } from './lib/supabase';
 import { filterEvents } from './utils/filterEvents';
 import { getCachedUser, cacheUser, clearUserCache, hasValidSession } from './utils/sessionCache';
 import { getCachedEvents, cacheEvents, clearEventsCache } from './utils/eventsCache';
+import { clearRecurrenceCache } from './utils/recurrence';
 
 // Lazy load modals for code splitting
 const EventModal = lazy(() => import('./components/EventModal'));
@@ -26,6 +27,7 @@ const AppContent: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
+  const [recurrenceExceptions, setRecurrenceExceptions] = useState<Map<string, Date[]>>(new Map());
 
   // Search and Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -140,22 +142,42 @@ const AppContent: React.FC = () => {
     }
 
     // Background sync using requestIdleCallback for non-blocking updates
-    const syncEvents = () => {
-      getEvents()
-        .then((data) => {
-          setEvents(data);
-          cacheEvents(data);
-        })
-        .catch((error) => {
-          console.error('Error loading events:', error);
-          // Only show error if no cached data exists
-          if (!cached || cached.length === 0) {
-            showToast('Failed to load events', 'error');
-          }
-        })
-        .finally(() => {
-          setLoadingEvents(false);
-        });
+    const syncEvents = async () => {
+      try {
+        const data = await getEvents();
+        setEvents(data);
+        cacheEvents(data);
+        
+        // Load recurrence exceptions for recurring events
+        const recurringEventIds = data
+          .filter(e => e.recurrence && e.recurrence.type !== 'none')
+          .map(e => e.id);
+        
+        if (recurringEventIds.length > 0) {
+          const exceptionsMap = new Map<string, Date[]>();
+          await Promise.all(
+            recurringEventIds.map(async (eventId) => {
+              try {
+                const exceptions = await getRecurrenceExceptions(eventId);
+                if (exceptions.length > 0) {
+                  exceptionsMap.set(eventId, exceptions);
+                }
+              } catch (err) {
+                console.error(`Error loading exceptions for event ${eventId}:`, err);
+              }
+            })
+          );
+          setRecurrenceExceptions(exceptionsMap);
+        }
+      } catch (error) {
+        console.error('Error loading events:', error);
+        // Only show error if no cached data exists
+        if (!cached || cached.length === 0) {
+          showToast('Failed to load events', 'error');
+        }
+      } finally {
+        setLoadingEvents(false);
+      }
     };
 
     // Use requestIdleCallback if available, otherwise use setTimeout
@@ -174,24 +196,45 @@ const AppContent: React.FC = () => {
     const syncInterval = setInterval(() => {
       // Only sync if page is visible and not in background
       if (document.visibilityState === 'visible') {
-        const syncEvents = () => {
-          getEvents()
-            .then((data) => {
-              setEvents((prev) => {
-                // Only update if data actually changed
-                const prevIds = prev.map(e => e.id).sort().join(',');
-                const newIds = data.map(e => e.id).sort().join(',');
-                if (prevIds !== newIds) {
-                  cacheEvents(data);
-                  return data;
-                }
-                return prev;
-              });
-            })
-            .catch((error) => {
-              console.error('Background sync error:', error);
-              // Silent fail for background sync
+        const syncEvents = async () => {
+          try {
+            const data = await getEvents();
+            setEvents((prev) => {
+              // Only update if data actually changed
+              const prevIds = prev.map(e => e.id).sort().join(',');
+              const newIds = data.map(e => e.id).sort().join(',');
+              if (prevIds !== newIds) {
+                cacheEvents(data);
+                return data;
+              }
+              return prev;
             });
+            
+            // Update recurrence exceptions
+            const recurringEventIds = data
+              .filter(e => e.recurrence && e.recurrence.type !== 'none')
+              .map(e => e.id);
+            
+            if (recurringEventIds.length > 0) {
+              const exceptionsMap = new Map<string, Date[]>();
+              await Promise.all(
+                recurringEventIds.map(async (eventId) => {
+                  try {
+                    const exceptions = await getRecurrenceExceptions(eventId);
+                    if (exceptions.length > 0) {
+                      exceptionsMap.set(eventId, exceptions);
+                    }
+                  } catch (err) {
+                    console.error(`Error loading exceptions for event ${eventId}:`, err);
+                  }
+                })
+              );
+              setRecurrenceExceptions(exceptionsMap);
+            }
+          } catch (error) {
+            console.error('Background sync error:', error);
+            // Silent fail for background sync
+          }
         };
 
         if ('requestIdleCallback' in window) {
@@ -354,6 +397,84 @@ const AppContent: React.FC = () => {
     setSelectedEvent(prev => prev?.id === updatedEvent.id ? updatedEvent : prev);
   }, []);
 
+  const handleDeleteInstance = useCallback(async (eventId: string, instanceDate: Date) => {
+    if (!user) return;
+    
+    // Обновляем исключения
+    setRecurrenceExceptions((prev) => {
+      const next = new Map(prev);
+      const exceptions = next.get(eventId) || [];
+      const normalizedDate = new Date(instanceDate);
+      normalizedDate.setHours(0, 0, 0, 0);
+      
+      // Добавляем исключение, если его еще нет
+      if (!exceptions.some(d => {
+        const dNormalized = new Date(d);
+        dNormalized.setHours(0, 0, 0, 0);
+        return dNormalized.getTime() === normalizedDate.getTime();
+      })) {
+        next.set(eventId, [...exceptions, normalizedDate]);
+      }
+      return next;
+    });
+    
+    // Очищаем кэш повторений
+    clearRecurrenceCache();
+    
+    showToast('Event instance deleted', 'success');
+  }, [user, showToast]);
+
+  const handleDeleteEvent = useCallback(async (id: string) => {
+    if (!user) return;
+    
+    // Find the event to determine if it's recurring
+    const eventToDelete = events.find(e => e.id === id);
+    if (!eventToDelete) {
+      showToast('Event not found', 'error');
+      return;
+    }
+    
+    // Optimistic update: remove event immediately
+    setEvents((prev) => {
+      const next = prev.filter(e => e.id !== id);
+      cacheEvents(next);
+      return next;
+    });
+    
+    // Clear recurrence cache
+    clearRecurrenceCache();
+    
+    // Close modal if it's open for this event
+    if (selectedEvent?.id === id) {
+      setIsModalOpen(false);
+      setTimeout(() => setSelectedEvent(null), 200);
+    }
+    
+    // Sync with server in background
+    try {
+      await deleteEvent(id, user.id, user.fullName);
+      showToast('Event deleted successfully', 'success');
+      
+      // Reload exceptions if it was a recurring event
+      if (eventToDelete.recurrence && eventToDelete.recurrence.type !== 'none') {
+        setRecurrenceExceptions((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+      }
+    } catch (e) {
+      console.error("Error deleting event", e);
+      // Rollback optimistic update on error
+      setEvents((prev) => {
+        const next = [...prev, eventToDelete];
+        cacheEvents(next);
+        return next;
+      });
+      showToast('Failed to delete event', 'error');
+    }
+  }, [user, events, selectedEvent, showToast]);
+
   // Prefetch events for a specific month (for smooth navigation)
   const handlePrefetchMonth = useCallback((date: Date) => {
     // Prefetch in background using requestIdleCallback
@@ -440,6 +561,7 @@ const AppContent: React.FC = () => {
             events={filteredEvents} 
             onEventClick={handleEventClick}
             onPrefetchMonth={handlePrefetchMonth}
+            recurrenceExceptions={recurrenceExceptions}
           />
         )}
       </main>
@@ -456,6 +578,8 @@ const AppContent: React.FC = () => {
             onSave={handleSaveEvent}
             onUpdate={handleUpdateEvent}
             onEventUpdate={handleEventUpdate}
+            onDelete={handleDeleteEvent}
+            onDeleteInstance={handleDeleteInstance}
           />
         </Suspense>
       )}

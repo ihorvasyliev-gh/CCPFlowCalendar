@@ -471,7 +471,85 @@ export const uploadAttachment = async (file: File): Promise<{ id: string; name: 
   };
 };
 
-export const deleteEvent = async (id: string): Promise<void> => {
+/**
+ * Получить список исключений для события (удаленных экземпляров)
+ */
+export const getRecurrenceExceptions = async (eventId: string): Promise<Date[]> => {
+  const { data, error } = await supabase
+    .from('recurrence_exceptions')
+    .select('exception_date')
+    .eq('event_id', eventId);
+
+  if (error) {
+    console.error('Error fetching recurrence exceptions:', error);
+    return [];
+  }
+
+  return (data || []).map(item => new Date(item.exception_date));
+};
+
+/**
+ * Удалить конкретный экземпляр повторяющегося события
+ */
+export const deleteRecurrenceInstance = async (eventId: string, instanceDate: Date, userId: string, userName: string): Promise<void> => {
+  // Проверяем, существует ли событие и является ли оно повторяющимся
+  const { data: eventData, error: fetchError } = await supabase
+    .from('events')
+    .select('id, recurrence_type')
+    .eq('id', eventId)
+    .single();
+
+  if (fetchError || !eventData) {
+    throw new Error('Event not found');
+  }
+
+  if (!eventData.recurrence_type || eventData.recurrence_type === 'none') {
+    throw new Error('Event is not recurring');
+  }
+
+  // Нормализуем дату (убираем время, оставляем только дату)
+  const normalizedDate = new Date(instanceDate);
+  normalizedDate.setHours(0, 0, 0, 0);
+
+  // Добавляем исключение
+  const { error: insertError } = await supabase
+    .from('recurrence_exceptions')
+    .insert({
+      event_id: eventId,
+      exception_date: normalizedDate.toISOString()
+    });
+
+  if (insertError) {
+    // Если исключение уже существует, это нормально (idempotent)
+    if (insertError.code !== '23505') { // Unique constraint violation
+      console.error('Error adding recurrence exception:', insertError);
+      throw new Error(insertError.message || 'Failed to delete instance');
+    }
+  }
+
+  // Добавляем запись в историю
+  const { error: historyError } = await supabase
+    .from('event_history')
+    .insert({
+      event_id: eventId,
+      user_id: userId,
+      user_name: userName,
+      action: 'updated',
+      changes: {
+        deleted_instance: { date: normalizedDate.toISOString() }
+      }
+    });
+
+  if (historyError) {
+    console.error('Error creating history entry:', historyError);
+    // Не прерываем операцию, только логируем
+  }
+};
+
+/**
+ * Удалить событие (всю серию, если оно повторяющееся)
+ */
+export const deleteEvent = async (id: string, userId?: string, userName?: string): Promise<void> => {
   // Сначала проверяем, существует ли событие
   const { data: eventData, error: fetchError } = await supabase
     .from('events')
@@ -481,6 +559,23 @@ export const deleteEvent = async (id: string): Promise<void> => {
 
   if (fetchError || !eventData) {
     throw new Error('Event not found');
+  }
+
+  // Добавляем запись в историю перед удалением (если есть userId и userName)
+  if (userId && userName) {
+    const { error: historyError } = await supabase
+      .from('event_history')
+      .insert({
+        event_id: id,
+        user_id: userId,
+        user_name: userName,
+        action: 'deleted'
+      });
+
+    if (historyError) {
+      console.error('Error creating history entry:', historyError);
+      // Не прерываем операцию, только логируем
+    }
   }
 
   // Удаляем событие (каскадное удаление удалит связанные записи автоматически)

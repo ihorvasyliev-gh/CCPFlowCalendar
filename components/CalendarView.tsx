@@ -9,9 +9,10 @@ interface CalendarViewProps {
   events: Event[];
   onEventClick: (event: Event) => void;
   onPrefetchMonth?: (date: Date) => void;
+  recurrenceExceptions?: Map<string, Date[]>;
 }
 
-const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPrefetchMonth }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPrefetchMonth, recurrenceExceptions }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const { theme } = useTheme();
@@ -86,11 +87,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
 
   // Expand recurring events for the current month view
   const displayEvents = useMemo(() => {
-    // Expand recurring events
-    const expanded = expandRecurringEvents(events, monthStart, monthEnd);
+    // Expand recurring events with exceptions
+    const expanded = expandRecurringEvents(events, monthStart, monthEnd, recurrenceExceptions);
     // Sort by date
     return expanded.sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [events, monthStart, monthEnd]);
+  }, [events, monthStart, monthEnd, recurrenceExceptions]);
 
   // For List View: Filter out past events (strictly before now) AND limit to current month
   const listViewEvents = useMemo(() => {
@@ -284,6 +285,22 @@ export default React.memo(CalendarView, (prevProps, nextProps) => {
   const prevDates = prevProps.events.map(e => e.date.getTime()).sort().join(',');
   const nextDates = nextProps.events.map(e => e.date.getTime()).sort().join(',');
   if (prevDates !== nextDates) return false;
+  
+  // Check if recurrence exceptions changed
+  if (prevProps.recurrenceExceptions !== nextProps.recurrenceExceptions) {
+    // Compare map sizes and keys
+    if (prevProps.recurrenceExceptions?.size !== nextProps.recurrenceExceptions?.size) return false;
+    if (prevProps.recurrenceExceptions && nextProps.recurrenceExceptions) {
+      for (const [key, value] of prevProps.recurrenceExceptions) {
+        const nextValue = nextProps.recurrenceExceptions.get(key);
+        if (!nextValue || nextValue.length !== value.length) return false;
+        // Compare dates
+        const prevDates = value.map(d => d.getTime()).sort().join(',');
+        const nextDates = nextValue.map(d => d.getTime()).sort().join(',');
+        if (prevDates !== nextDates) return false;
+      }
+    }
+  }
   
   if (prevProps.onEventClick !== nextProps.onEventClick) return false;
   if (prevProps.onPrefetchMonth !== nextProps.onPrefetchMonth) return false;
