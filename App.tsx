@@ -34,31 +34,50 @@ const AppContent: React.FC = () => {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // Check for existing session on mount
+  const userIdRef = React.useRef<string | null>(null);
+
   useEffect(() => {
     let isMounted = true;
+    console.time('Session Initialization');
 
-    const initializeSession = async () => {
+    const fetchUserProfile = async (uid: string) => {
+      if (userIdRef.current === uid) return; // Already loaded/loading this user
+
       try {
-        console.time('Session Initialization');
-        // Get initial session
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log('Fetching user details for:', uid);
+        const currentUser = await getCurrentUser(uid);
 
-        if (session && isMounted) {
-          console.log('Found existing session, fetching user details...');
-          // Pass user.id to avoid redundant session fetch
-          const currentUser = await getCurrentUser(session.user.id);
-          if (isMounted && currentUser) {
-            setUser(currentUser);
-            console.log('User restored:', currentUser.email);
-          }
+        if (isMounted && currentUser) {
+          userIdRef.current = currentUser.id; // Update ref immediately
+          setUser(currentUser);
+          console.log('User restored:', currentUser.email);
         }
       } catch (error) {
-        console.error('Error initializing session:', error);
+        console.error('Error fetching user profile:', error);
       } finally {
         if (isMounted) {
           setIsSessionLoading(false);
           console.timeEnd('Session Initialization');
         }
+      }
+    };
+
+    const initializeSession = async () => {
+      try {
+        // Get initial session
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session && isMounted) {
+          console.log('Found existing session in initializeSession');
+          await fetchUserProfile(session.user.id);
+        } else if (isMounted) {
+          // No session found, stop loading
+          setIsSessionLoading(false);
+          console.timeEnd('Session Initialization');
+        }
+      } catch (error) {
+        console.error('Error initializing session:', error);
+        if (isMounted) setIsSessionLoading(false);
       }
     };
 
@@ -70,21 +89,17 @@ const AppContent: React.FC = () => {
       if (!isMounted) return;
 
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session) {
-        try {
-          // If we already have the correct user, don't refetch
-          // checking id to avoid unnecessary requests
-          if (user?.id === session.user.id) return;
-
-          const currentUser = await getCurrentUser();
-          if (isMounted && currentUser) {
-            setUser(currentUser);
-          }
-        } catch (error) {
-          console.error('Error getting user after auth change:', error);
+        // Use ref to check if we already have this user loaded/loading
+        if (userIdRef.current === session.user.id) {
+          console.log('User already loaded, skipping fetch');
+          return;
         }
+        await fetchUserProfile(session.user.id);
       } else if (event === 'SIGNED_OUT') {
+        userIdRef.current = null;
         setUser(null);
         setEvents([]); // Clear data on logout
+        setIsSessionLoading(false);
       }
     });
 
