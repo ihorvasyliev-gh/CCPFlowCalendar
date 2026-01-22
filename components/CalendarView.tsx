@@ -77,47 +77,47 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick }) => 
 
 
   const getCategoryColor = (category?: EventCategory) => {
-    if (!category) return 'bg-brand-50 text-brand-700 border-brand-200 dark:bg-brand-900/30 dark:text-brand-300 dark:border-brand-700/50';
+    if (!category) return 'bg-brand-50 text-brand-800 dark:bg-brand-900 dark:text-brand-100';
 
     const colors: Record<string, string> = {
-      meeting: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700/50',
-      workshop: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700/50',
-      social: 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-700/50',
-      training: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700/50',
-      community: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700/50',
-      celebration: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700/50',
-      other: 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+      meeting: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
+      workshop: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100',
+      social: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-100',
+      training: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100',
+      community: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100',
+      celebration: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100',
+      other: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100'
     };
     return colors[category] || colors.other;
   };
 
   return (
-    <div className={`rounded-3xl shadow-xl overflow-hidden animate-fade-in ${theme === 'dark' ? 'glass-panel-dark' : 'glass-panel'}`}>
+    <div className={`rounded-2xl overflow-hidden animate-fade-in border border-slate-200 dark:border-slate-800 ${theme === 'dark' ? 'glass-panel-dark' : 'bg-white shadow-sm'}`}>
 
       {/* Calendar Header */}
-      <div className="p-6 flex flex-col sm:flex-row justify-between items-center border-b border-slate-200/50 dark:border-slate-700/50 gap-4">
-        <div className="flex items-center gap-6">
-          <h2 className={`text-2xl font-display font-bold w-48 ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{monthName}</h2>
-          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
-            <button onClick={prevMonth} className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-400 transition-all shadow-sm hover:shadow-md"><ChevronLeft className="h-5 w-5" /></button>
-            <button onClick={nextMonth} className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-400 transition-all shadow-sm hover:shadow-md"><ChevronRight className="h-5 w-5" /></button>
+      <div className="p-6 flex flex-col sm:flex-row justify-between items-center border-b border-slate-100 dark:border-slate-800 gap-4">
+        <div className="flex items-center gap-4">
+          <h2 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white w-48">{monthName}</h2>
+          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+            <button onClick={prevMonth} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-md text-slate-500 dark:text-slate-400 transition-all shadow-sm"><ChevronLeft className="h-4 w-4" /></button>
+            <button onClick={nextMonth} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-md text-slate-500 dark:text-slate-400 transition-all shadow-sm"><ChevronRight className="h-4 w-4" /></button>
           </div>
-          <button onClick={goToday} className="px-4 py-2 text-sm text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-xl font-bold transition-colors">Today</button>
+          <button onClick={goToday} className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">Today</button>
         </div>
 
-        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+        <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg">
           <button
             onClick={() => setViewMode('grid')}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-slate-700 shadow text-brand-600 dark:text-brand-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+            className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-sm font-medium transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
           >
-            <Grid className="h-4 w-4" />
+            <Grid className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Grid</span>
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 shadow text-brand-600 dark:text-brand-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+            className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-sm font-medium transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
           >
-            <ListIcon className="h-4 w-4" />
+            <ListIcon className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">List</span>
           </button>
         </div>
@@ -126,35 +126,37 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick }) => 
       {/* Grid View */}
       {viewMode === 'grid' && (
         <div className="p-6">
-          <div className="grid grid-cols-7 mb-4">
+          <div className="grid grid-cols-7 mb-2">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} className="text-center text-xs font-bold text-slate-400 uppercase tracking-widest">
+              <div key={day} className="text-center text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
                 {day}
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-3 lg:gap-4">
+          <div className="grid grid-cols-7 border-t border-l border-slate-100 dark:border-slate-800">
             {calendarDays.map((day, idx) => {
-              if (!day) return <div key={`empty-${idx}`} className="h-28 sm:h-36 bg-slate-50/30 dark:bg-slate-800/20 rounded-2xl"></div>;
+              if (!day) return <div key={`empty-${idx}`} className="h-32 bg-slate-50/50 dark:bg-slate-800/30 border-b border-r border-slate-100 dark:border-slate-800"></div>;
 
               const dayEvents = displayEvents.filter(e => isSameDay(e.date, day));
               const isToday = isSameDay(day, new Date());
 
               return (
-                <div key={day.toISOString()} className={`min-h-[7rem] sm:min-h-[9rem] border rounded-2xl p-3 transition-all hover:scale-[1.02] hover:shadow-lg ${isToday ? 'bg-brand-50/50 border-brand-200 dark:bg-brand-900/20 dark:border-brand-700' : 'bg-white/50 dark:bg-slate-800/40 border-slate-100 dark:border-slate-700'}`}>
-                  <div className={`text-right text-sm font-bold mb-2 ${isToday ? 'text-brand-600 dark:text-brand-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {day.getDate()}
+                <div key={day.toISOString()} className={`min-h-[8rem] group border-b border-r border-slate-100 dark:border-slate-800 p-2 transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/50 ${isToday ? 'bg-slate-50/80 dark:bg-slate-800/80' : 'bg-white dark:bg-slate-900/0'}`}>
+                  <div className={`text-right text-xs font-semibold mb-2 ${isToday ? 'text-brand-600 dark:text-brand-400' : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500'}`}>
+                    {isToday ? (
+                      <span className="bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300 px-1.5 py-0.5 rounded-full">{day.getDate()}</span>
+                    ) : day.getDate()}
                   </div>
-                  <div className="space-y-1.5 cursor-pointer">
+                  <div className="space-y-1">
                     {dayEvents.map(ev => {
                       const colorClass = getCategoryColor(ev.category);
-                      const statusClass = ev.status === 'cancelled' ? 'line-through opacity-60' : ev.status === 'draft' ? 'opacity-50 dashed-border' : '';
+                      const statusClass = ev.status === 'cancelled' ? 'line-through opacity-50' : ev.status === 'draft' ? 'opacity-70 dashed-border' : '';
 
                       return (
                         <div
                           key={ev.instanceKey ?? ev.id}
                           onClick={(e) => { e.stopPropagation(); onEventClick(ev); }}
-                          className={`w-full text-left ${colorClass} border text-[10px] sm:text-xs px-2 py-1.5 rounded-lg truncate font-medium transition-all hover:brightness-95 ${statusClass}`}
+                          className={`w-full text-left ${colorClass} text-[10px] px-1.5 py-1 rounded-[4px] truncate font-medium transition-all hover:opacity-80 cursor-pointer ${statusClass}`}
                           title={ev.title}
                         >
                           {ev.title}
@@ -171,69 +173,46 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick }) => 
 
       {/* List View */}
       {viewMode === 'list' && (
-        <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {listViewEvents.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 dark:text-slate-500">No upcoming events found for this month.</div>
+            <div className="p-12 text-center text-slate-400 text-sm">No upcoming events found for this month.</div>
           ) : (
             listViewEvents.map(event => (
-              <div key={event.instanceKey ?? event.id} onClick={() => onEventClick(event)} className="p-6 hover:bg-white/50 dark:hover:bg-slate-800/50 cursor-pointer flex items-start gap-6 transition-all group border-l-4 border-transparent hover:border-brand-500">
-                {/* Date Badge */}
-                <div className={`flex-shrink-0 w-20 text-center rounded-2xl p-3 transition-transform group-hover:scale-105 shadow-sm ${theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-white text-slate-800'}`}>
-                  <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">{event.date.toLocaleString('default', { month: 'short' })}</div>
-                  <div className="text-2xl font-display font-bold text-brand-600 dark:text-brand-400">{event.date.getDate()}</div>
+              <div key={event.instanceKey ?? event.id} onClick={() => onEventClick(event)} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer flex items-start gap-4 transition-colors group">
+                {/* Date Badge - Minimal */}
+                <div className="flex-shrink-0 w-14 text-center">
+                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{event.date.toLocaleString('default', { month: 'short' })}</div>
+                  <div className="text-xl font-semibold text-slate-900 dark:text-white">{event.date.getDate()}</div>
                 </div>
 
-                <div className="flex-grow min-w-0">
+                <div className="flex-grow min-w-0 pt-0.5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <h3 className={`text-lg font-bold text-slate-800 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors truncate ${event.status === 'cancelled' ? 'line-through opacity-60' :
-                        event.status === 'draft' ? 'opacity-70' : ''
-                        }`}>
+                      <h3 className={`text-sm font-semibold text-slate-900 dark:text-white truncate ${event.status === 'cancelled' ? 'line-through opacity-50' : ''}`}>
                         {event.title}
                       </h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{event.description}</p>
+                      {event.description && <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{event.description}</p>}
                     </div>
                     {event.status === 'cancelled' && (
-                      <span className="px-2.5 py-1 text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 rounded-lg">
+                      <span className="px-2 py-0.5 text-[10px] font-bold bg-red-100 text-red-600 rounded-full">
                         Cancelled
-                      </span>
-                    )}
-                    {event.status === 'draft' && (
-                      <span className="px-2.5 py-1 text-xs font-bold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 rounded-lg">
-                        Draft
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center flex-wrap gap-3 mt-3">
-                    <div className="flex items-center text-xs font-medium text-slate-500 dark:text-slate-400">
-                      <Clock className="h-3.5 w-3.5 mr-1.5" />
+                  <div className="flex items-center flex-wrap gap-3 mt-2">
+                    <div className="flex items-center text-xs text-slate-500">
+                      <Clock className="h-3 w-3 mr-1" />
                       {event.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
-                    <div className="flex items-center text-xs font-medium text-slate-500 dark:text-slate-400">
-                      <MapPin className="h-3.5 w-3.5 mr-1.5" />
-                      {event.location}
-                    </div>
-                    {event.category && (
-                      <span className={`px-2.5 py-1 text-xs font-bold rounded-lg border ${getCategoryColor(event.category)}`}>
-                        {event.category}
-                      </span>
-                    )}
-                    {event.tags && event.tags.length > 0 && (
-                      <div className="flex items-center text-xs font-medium text-slate-400">
-                        <Tag className="h-3.5 w-3.5 mr-1.5" />
-                        {event.tags.slice(0, 2).join(', ')}
-                        {event.tags.length > 2 && ` +${event.tags.length - 2}`}
+                    {event.location && (
+                      <div className="flex items-center text-xs text-slate-500">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        {event.location}
                       </div>
                     )}
                   </div>
                 </div>
-
-                {event.posterUrl && (
-                  <div className="hidden sm:block flex-shrink-0 h-20 w-20 rounded-xl overflow-hidden shadow-md group-hover:shadow-lg transition-all">
-                    <img src={event.posterUrl} alt="" className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                  </div>
-                )}
               </div>
             ))
           )}
