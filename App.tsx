@@ -8,7 +8,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { CalendarDaySkeleton } from './components/SkeletonLoader';
 import { ToastProvider, useToast } from './contexts/ToastContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { User, Event, EventFilters } from './types';
+import { User, Event, EventFilters, UserRole } from './types';
 import { getEvents, createEvent, updateEvent, deleteEvent, deleteRecurrenceInstance, getRecurrenceExceptions } from './services/eventService';
 import { logout as logoutService, getCurrentUser } from './services/authService';
 import { supabase } from './lib/supabase';
@@ -570,8 +570,9 @@ const AppContent: React.FC = () => {
             events={filteredEvents} 
             onEventClick={handleEventClick}
             onPrefetchMonth={handlePrefetchMonth}
-            onAddEventForDate={handleAddEventForDate}
+            onAddEventForDate={user.role === UserRole.ADMIN ? handleAddEventForDate : undefined}
             recurrenceExceptions={recurrenceExceptions}
+            userRole={user.role}
           />
         )}
       </main>

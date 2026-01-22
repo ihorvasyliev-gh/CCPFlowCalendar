@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Event, ViewMode, EventCategory } from '../types';
+import { Event, ViewMode, EventCategory, UserRole } from '../types';
 import { getDaysInMonth, getFirstDayOfMonth, isSameDay, addMonths } from '../utils/date';
 import { expandRecurringEvents } from '../utils/recurrence';
 import { ChevronLeft, ChevronRight, Grid, List as ListIcon, MapPin, Clock, Tag, Plus } from 'lucide-react';
@@ -11,9 +11,10 @@ interface CalendarViewProps {
   onPrefetchMonth?: (date: Date) => void;
   onAddEventForDate?: (date: Date) => void;
   recurrenceExceptions?: Map<string, Date[]>;
+  userRole?: UserRole;
 }
 
-const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPrefetchMonth, onAddEventForDate, recurrenceExceptions }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPrefetchMonth, onAddEventForDate, recurrenceExceptions, userRole }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const { theme } = useTheme();
@@ -200,7 +201,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
                         day.getDate()
                       )}
                     </span>
-                    {onAddEventForDate && (
+                    {onAddEventForDate && userRole === UserRole.ADMIN && (
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); onAddEventForDate(day); }}
@@ -316,6 +317,7 @@ export default React.memo(CalendarView, (prevProps, nextProps) => {
   if (prevProps.onEventClick !== nextProps.onEventClick) return false;
   if (prevProps.onPrefetchMonth !== nextProps.onPrefetchMonth) return false;
   if (prevProps.onAddEventForDate !== nextProps.onAddEventForDate) return false;
+  if (prevProps.userRole !== nextProps.userRole) return false;
 
   return true; // Props are equal, skip re-render
 });
