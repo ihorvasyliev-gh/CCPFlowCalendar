@@ -33,7 +33,7 @@ const AppContent: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
-  // Session restoration - using only onAuthStateChange (recommended Supabase pattern)
+  // Session restoration - get session immediately, then subscribe to changes
   const userIdRef = React.useRef<string | null>(null);
   const isInitializedRef = React.useRef(false);
 
@@ -72,31 +72,46 @@ const AppContent: React.FC = () => {
       }
     };
 
-    // onAuthStateChange fires IMMEDIATELY with INITIAL_SESSION when subscribed
-    // This is the recommended Supabase pattern - no need for separate getSession() call
+    // Get session immediately from localStorage (synchronous, no network delay)
+    const initializeSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+
+        if (session && !error) {
+          // Session exists, restore user immediately
+          await fetchUserProfile(session.user.id);
+        }
+        
+        // Finish initialization regardless of whether session exists
+        finishInitialization();
+      } catch (error) {
+        console.error('Error initializing session:', error);
+        finishInitialization();
+      }
+    };
+
+    // Initialize session immediately
+    initializeSession();
+
+    // Subscribe to auth state changes for future updates
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state change:', event);
       if (!isMounted) return;
 
-      if (event === 'INITIAL_SESSION') {
-        // This fires immediately on subscription with current session state
-        if (session) {
-          await fetchUserProfile(session.user.id);
-        }
-        finishInitialization();
-      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         // User just logged in or token was refreshed
         if (session) {
           await fetchUserProfile(session.user.id);
-        }
-        if (!isInitializedRef.current) {
-          finishInitialization();
         }
       } else if (event === 'SIGNED_OUT') {
         userIdRef.current = null;
         setUser(null);
         setEvents([]);
-        setIsSessionLoading(false);
+        if (!isInitializedRef.current) {
+          finishInitialization();
+        }
       }
     });
 
