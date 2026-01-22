@@ -22,6 +22,7 @@ const AppContent: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
+  const [isSessionLoading, setIsSessionLoading] = useState(true);
 
   // Search and Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,69 +36,74 @@ const AppContent: React.FC = () => {
   // Check for existing session on mount
   useEffect(() => {
     let isMounted = true;
-    let subscription: { unsubscribe: () => void } | null = null;
 
-    const checkSession = async () => {
+    const initializeSession = async () => {
       try {
-        const currentUser = await getCurrentUser();
-        // Проверяем, что компонент все еще смонтирован перед обновлением состояния
-        if (isMounted && currentUser) {
-          setUser(currentUser);
+        // Get initial session
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session && isMounted) {
+          console.log('Found existing session, fetching user details...');
+          const currentUser = await getCurrentUser();
+          if (isMounted && currentUser) {
+            setUser(currentUser);
+            console.log('User restored:', currentUser.email);
+          }
         }
-      } catch (error: any) {
-        // Игнорируем AbortError и таймауты при проверке сессии
-        if (error?.name !== 'AbortError' && !error?.message?.includes('aborted') && !error?.message?.includes('cancelled')) {
-          console.error('Error checking session:', error);
+      } catch (error) {
+        console.error('Error initializing session:', error);
+      } finally {
+        if (isMounted) {
+          setIsSessionLoading(false);
         }
       }
     };
 
-    checkSession();
+    initializeSession();
 
     // Listen for auth state changes
-    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event);
       if (!isMounted) return;
 
-      if (event === 'SIGNED_IN' && session) {
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session) {
         try {
+          // If we already have the correct user, don't refetch
+          // checking id to avoid unnecessary requests
+          if (user?.id === session.user.id) return;
+
           const currentUser = await getCurrentUser();
-          // Проверяем, что компонент все еще смонтирован перед обновлением состояния
           if (isMounted && currentUser) {
             setUser(currentUser);
           }
-        } catch (error: any) {
-          // Игнорируем AbortError и таймауты
-          if (error?.name !== 'AbortError' && !error?.message?.includes('aborted') && !error?.message?.includes('cancelled')) {
-            console.error('Error getting user after sign in:', error);
-          }
+        } catch (error) {
+          console.error('Error getting user after auth change:', error);
         }
-      } else if (event === 'SIGNED_OUT' && isMounted) {
+      } else if (event === 'SIGNED_OUT') {
         setUser(null);
+        setEvents([]); // Clear data on logout
       }
     });
 
-    subscription = authSubscription;
-
     return () => {
       isMounted = false;
-      if (subscription) {
-        subscription.unsubscribe();
-      }
+      subscription.unsubscribe();
     };
   }, []);
 
-  // Initial Load
+  // Initial Load of Events
   useEffect(() => {
     if (user) {
       setLoadingEvents(true);
       getEvents()
         .then(data => {
           setEvents(data);
-          setLoadingEvents(false);
         })
         .catch(error => {
           console.error('Error loading events:', error);
           showToast('Failed to load events', 'error');
+        })
+        .finally(() => {
           setLoadingEvents(false);
         });
     }
@@ -178,15 +184,23 @@ const AppContent: React.FC = () => {
   }, [events]);
 
   // Render Logic
+  if (isSessionLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
   if (!user) {
     return <LoginPage onLogin={handleLogin} />;
   }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      <Navbar 
-        user={user} 
-        onLogout={handleLogout} 
+      <Navbar
+        user={user}
+        onLogout={handleLogout}
         onAddEventClick={handleCreateClick}
         onExportClick={() => setIsExportModalOpen(true)}
       />
