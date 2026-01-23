@@ -98,7 +98,7 @@ const EventHistory: React.FC<EventHistoryProps> = ({ history }) => {
         <h4 className="text-sm font-medium text-gray-900 dark:text-white">History ({history.length})</h4>
       </div>
 
-      <div className="space-y-3 max-h-64 overflow-y-auto">
+      <div className="space-y-3">
         {history.map((entry) => (
           <div key={entry.id} className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
             <div className="flex-shrink-0 mt-0.5">
