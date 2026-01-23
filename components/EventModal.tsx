@@ -492,7 +492,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
           </div>
 
           {/* Body */}
-          <div className="px-4 sm:px-6 py-4 sm:py-6 max-h-[calc(95vh-80px)] sm:max-h-[70vh] overflow-y-auto custom-scrollbar">
+          <div className="px-4 sm:px-6 py-4 sm:py-6 max-h-[calc(95vh-160px)] sm:max-h-[calc(90vh-140px)] overflow-y-auto custom-scrollbar pb-20 sm:pb-4">
 
             {/* VIEW MODE */}
             {!showForm && event ? (
