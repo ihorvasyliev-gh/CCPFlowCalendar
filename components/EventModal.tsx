@@ -540,10 +540,10 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
         {/* Modal Panel - Full Screen on Mobile */}
-        <div className={`relative inline-block align-bottom rounded-none sm:rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] border-t sm:border border-white/20 animate-scale-in ${theme === 'dark' ? 'glass-panel-dark' : 'bg-white'}`}>
+        <div className={`relative flex flex-col rounded-none sm:rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-2xl w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] border-t sm:border border-white/20 animate-scale-in ${theme === 'dark' ? 'glass-panel-dark' : 'bg-white'}`}>
 
           {/* Header */}
-          <div className="px-4 sm:px-6 py-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-inherit z-10">
+          <div className="px-4 sm:px-6 py-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-800 shrink-0 z-10 bg-white dark:bg-slate-900">
             <h3 className={`text-base sm:text-lg font-semibold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`} id="modal-title">
               {isCreating ? 'Create New Event' : (isEditing ? 'Edit Event' : 'Event Details')}
             </h3>
@@ -553,7 +553,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
           </div>
 
           {/* Body */}
-          <div className="px-4 sm:px-6 py-4 sm:py-6 h-[calc(100dvh-73px)] sm:h-auto max-h-none sm:max-h-[calc(90vh-140px)] overflow-y-auto custom-scrollbar pb-20 sm:pb-4">
+          <div className="px-4 sm:px-6 py-4 sm:py-6 flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-4">
 
             {/* VIEW MODE */}
             {!showForm && event ? (
@@ -1009,7 +1009,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
           )}
 
           {/* Footer */}
-          <div className="bg-slate-50 dark:bg-slate-800/50 px-4 sm:px-6 py-4 flex flex-col-reverse sm:flex-row-reverse gap-3 border-t border-slate-100 dark:border-slate-800 sticky bottom-0">
+          <div className="bg-slate-50 dark:bg-slate-800/50 px-4 sm:px-6 py-4 flex flex-col-reverse sm:flex-row-reverse gap-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
             {showForm ? (
               <>
                 <button type="submit" form="event-form" disabled={isSubmitting} className="inline-flex justify-center items-center rounded-lg px-5 py-3 sm:py-2 min-h-[48px] sm:min-h-0 bg-slate-900 text-white font-medium hover:bg-slate-800 shadow-sm transition-all disabled:opacity-50 text-sm w-full sm:w-auto">
@@ -1025,8 +1025,8 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
               </button>
             )}
           </div>
-
         </div>
+
       </div>
     </div>
   );
