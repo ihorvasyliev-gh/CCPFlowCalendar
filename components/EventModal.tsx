@@ -471,7 +471,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-      <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:flex sm:items-center sm:p-0">
+      <div className="flex items-end justify-center min-h-screen pt-0 px-0 pb-0 text-center sm:flex sm:items-center sm:p-0 sm:pt-4 sm:px-4 sm:pb-20">
 
         {/* Transparent Backdrop */}
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity animate-fade-in" aria-hidden="true" onClick={onClose}></div>
@@ -479,20 +479,20 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
         {/* Modal Panel - Minimalist */}
-        <div className={`relative inline-block align-bottom rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full border border-white/20 animate-scale-in ${theme === 'dark' ? 'glass-panel-dark' : 'bg-white'}`}>
+        <div className={`relative inline-block align-bottom rounded-t-3xl sm:rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full h-full sm:h-auto max-h-[95vh] sm:max-h-[90vh] border-t sm:border border-white/20 animate-scale-in ${theme === 'dark' ? 'glass-panel-dark' : 'bg-white'}`}>
 
           {/* Header */}
-          <div className="px-6 py-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-800">
-            <h3 className={`text-lg font-semibold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`} id="modal-title">
+          <div className="px-4 sm:px-6 py-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-inherit z-10">
+            <h3 className={`text-base sm:text-lg font-semibold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`} id="modal-title">
               {isCreating ? 'Create New Event' : (isEditing ? 'Edit Event' : 'Event Details')}
             </h3>
-            <button onClick={onClose} className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-300 transition-colors focus:outline-none">
+            <button onClick={onClose} className="p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 sm:p-1.5 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-300 transition-colors focus:outline-none">
               <X className="h-5 w-5" />
             </button>
           </div>
 
           {/* Body */}
-          <div className="px-6 py-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+          <div className="px-4 sm:px-6 py-4 sm:py-6 max-h-[calc(95vh-80px)] sm:max-h-[70vh] overflow-y-auto custom-scrollbar">
 
             {/* VIEW MODE */}
             {!showForm && event ? (
@@ -568,19 +568,19 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                 )}
 
                 {/* Details Grid */}
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="flex items-center p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <CalendarIcon className="h-5 w-5 mr-3 text-slate-400" />
-                    <div>
+                    <CalendarIcon className="h-5 w-5 mr-3 text-slate-400 flex-shrink-0" />
+                    <div className="min-w-0">
                       <p className="text-[10px] text-slate-400 font-bold uppercase">Date & Time</p>
-                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatDate(event.date)} at {formatTime(event.date)}</p>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 break-words">{formatDate(event.date)} at {formatTime(event.date)}</p>
                     </div>
                   </div>
                   <div className="flex items-center p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <MapPin className="h-5 w-5 mr-3 text-slate-400" />
+                    <MapPin className="h-5 w-5 mr-3 text-slate-400 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-[10px] text-slate-400 font-bold uppercase">Location</p>
-                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-brand-600 truncate block">
+                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-brand-600 break-words block">
                         {event.location}
                       </a>
                     </div>
@@ -617,7 +617,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                       <button
                         onClick={handleRsvp}
                         disabled={isRsvping || (event.maxAttendees && attendees.length >= event.maxAttendees && !userHasRsvped)}
-                        className={`px-4 py-2 text-sm font-bold rounded-lg transition-all active:scale-95 ${userHasRsvped
+                        className={`px-4 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-sm font-bold rounded-lg transition-all active:scale-95 ${userHasRsvped
                           ? 'bg-white text-red-600 border border-red-100 hover:bg-red-50'
                           : 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200'
                           } disabled:opacity-50 disabled:cursor-not-allowed`}
@@ -628,7 +628,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                   </div>
                 )}
 
-                <button onClick={handleAddToCalendar} className="w-full py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                <button onClick={handleAddToCalendar} className="w-full py-3 sm:py-2.5 min-h-[44px] sm:min-h-0 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                   Add to Google Calendar
                 </button>
 
@@ -646,32 +646,32 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
               <form id="event-form" onSubmit={handleSubmit} className="space-y-5">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Event Title</label>
-                  <input required type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium placeholder-slate-400" placeholder="e.g. Summer Strategy Meeting" />
+                  <input required type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2.5 sm:py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium placeholder-slate-400 min-h-[44px] sm:min-h-0" placeholder="e.g. Summer Strategy Meeting" />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Date</label>
-                    <input required type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all" />
+                    <input required type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2.5 sm:py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all min-h-[44px] sm:min-h-0" />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Time</label>
-                    <input required type="time" value={timeStr} onChange={(e) => setTimeStr(e.target.value)} className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all" />
+                    <input required type="time" value={timeStr} onChange={(e) => setTimeStr(e.target.value)} className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2.5 sm:py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all min-h-[44px] sm:min-h-0" />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Location</label>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                    <input required type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="block w-full pl-9 rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all" placeholder="Conference Room A" />
+                    <MapPin className="absolute left-3 top-3 sm:top-2.5 h-4 w-4 text-slate-400" />
+                    <input required type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="block w-full pl-9 rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2.5 sm:py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all min-h-[44px] sm:min-h-0" placeholder="Conference Room A" />
                   </div>
                 </div>
 
-                <div className={`grid gap-4 ${role === UserRole.ADMIN ? 'grid-cols-[1fr_auto_1fr]' : 'grid-cols-[1fr_auto]'}`}>
+                <div className={`grid gap-4 ${role === UserRole.ADMIN ? 'grid-cols-1 sm:grid-cols-[1fr_auto_1fr]' : 'grid-cols-1 sm:grid-cols-[1fr_auto]'}`}>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Category</label>
-                    <select value={category} onChange={(e) => setCategory(e.target.value as EventCategory | '')} className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all">
+                    <select value={category} onChange={(e) => setCategory(e.target.value as EventCategory | '')} className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2.5 sm:py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all min-h-[44px] sm:min-h-0">
                       <option value="">Select...</option>
                       {categories.map((cat) => (
                         <option key={cat.id} value={cat.name}>
@@ -684,7 +684,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                     <button
                       type="button"
                       onClick={() => setShowAddCategoryModal(true)}
-                      className="p-2 rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border transition-all focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                      className="p-2.5 sm:p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border transition-all focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
                       title="Add new category"
                     >
                       <Plus className="h-4 w-4" />
@@ -693,7 +693,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                   {role === UserRole.ADMIN && (
                     <div>
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Status</label>
-                      <select value={status} onChange={(e) => setStatus(e.target.value as EventStatus)} className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all">
+                      <select value={status} onChange={(e) => setStatus(e.target.value as EventStatus)} className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2.5 sm:py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all min-h-[44px] sm:min-h-0">
                         <option value="draft">Draft</option>
                         <option value="published">Published</option>
                       </select>
@@ -703,7 +703,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
 
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Description</label>
-                  <textarea required value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all resize-none" placeholder="Enter event details..." />
+                  <textarea required value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2.5 sm:py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all resize-none min-h-[100px]" placeholder="Enter event details..." />
                 </div>
 
                 {/* File Uploads Section simplified */}
@@ -733,7 +733,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                       <select
                         value={recurrenceType}
                         onChange={(e) => setRecurrenceType(e.target.value as any)}
-                        className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-2.5 py-1.5 text-sm focus:ring-2 focus:ring-brand-500/20 transition-all"
+                        className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-2.5 py-2.5 sm:py-1.5 text-sm focus:ring-2 focus:ring-brand-500/20 transition-all min-h-[44px] sm:min-h-0"
                       >
                         <option value="none">None</option>
                         <option value="daily">Daily</option>
@@ -752,7 +752,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                             min="1"
                             value={recurrenceInterval}
                             onChange={(e) => setRecurrenceInterval(Number(e.target.value))}
-                            className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-2.5 py-1.5 text-sm focus:ring-2 focus:ring-brand-500/20 transition-all"
+                            className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-2.5 py-2.5 sm:py-1.5 text-sm focus:ring-2 focus:ring-brand-500/20 transition-all min-h-[44px] sm:min-h-0"
                           />
                         </div>
                         <div>
@@ -761,7 +761,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                             type="date"
                             value={recurrenceEndDate}
                             onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                            className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-2.5 py-1.5 text-sm focus:ring-2 focus:ring-brand-500/20 transition-all"
+                            className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-2.5 py-2.5 sm:py-1.5 text-sm focus:ring-2 focus:ring-brand-500/20 transition-all min-h-[44px] sm:min-h-0"
                           />
                         </div>
                       </>
@@ -898,18 +898,18 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
           )}
 
           {/* Footer */}
-          <div className="bg-slate-50 dark:bg-slate-800/50 px-6 py-4 flex flex-row-reverse gap-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="bg-slate-50 dark:bg-slate-800/50 px-4 sm:px-6 py-4 flex flex-col-reverse sm:flex-row-reverse gap-3 border-t border-slate-100 dark:border-slate-800 sticky bottom-0">
             {showForm ? (
               <>
-                <button type="submit" form="event-form" disabled={isSubmitting} className="inline-flex justify-center rounded-lg px-5 py-2 bg-slate-900 text-white font-medium hover:bg-slate-800 shadow-sm transition-all disabled:opacity-50 text-sm">
+                <button type="submit" form="event-form" disabled={isSubmitting} className="inline-flex justify-center items-center rounded-lg px-5 py-3 sm:py-2 min-h-[48px] sm:min-h-0 bg-slate-900 text-white font-medium hover:bg-slate-800 shadow-sm transition-all disabled:opacity-50 text-sm w-full sm:w-auto">
                   {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : (isEditing ? 'Save Changes' : 'Create Event')}
                 </button>
-                <button type="button" onClick={() => { isEditing ? setIsEditing(false) : onClose() }} disabled={isSubmitting} className="inline-flex justify-center rounded-lg px-5 py-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium hover:bg-slate-50 border border-slate-200 dark:border-slate-600 transition-all text-sm">
+                <button type="button" onClick={() => { isEditing ? setIsEditing(false) : onClose() }} disabled={isSubmitting} className="inline-flex justify-center items-center rounded-lg px-5 py-3 sm:py-2 min-h-[48px] sm:min-h-0 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium hover:bg-slate-50 border border-slate-200 dark:border-slate-600 transition-all text-sm w-full sm:w-auto">
                   Cancel
                 </button>
               </>
             ) : (
-              <button type="button" onClick={onClose} className="inline-flex justify-center rounded-lg px-5 py-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium hover:bg-slate-50 border border-slate-200 dark:border-slate-600 transition-all text-sm">
+              <button type="button" onClick={onClose} className="inline-flex justify-center items-center rounded-lg px-5 py-3 sm:py-2 min-h-[48px] sm:min-h-0 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium hover:bg-slate-50 border border-slate-200 dark:border-slate-600 transition-all text-sm w-full sm:w-auto">
                 Close
               </button>
             )}
@@ -944,3 +944,4 @@ export default React.memo(EventModal, (prevProps, nextProps) => {
   
   return true; // Props are equal, skip re-render
 });
+

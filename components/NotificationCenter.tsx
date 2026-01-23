@@ -77,18 +77,18 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId }) => {
       {isOpen && (
         <>
           <div
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm sm:bg-transparent sm:backdrop-blur-none"
             onClick={() => setIsOpen(false)}
             aria-hidden="true"
           />
-          <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 z-50 max-h-96 overflow-hidden flex flex-col">
+          <div className="fixed top-16 right-0 left-0 sm:absolute sm:top-auto sm:right-0 sm:left-auto sm:mt-2 sm:w-80 w-full sm:max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-800 rounded-b-lg sm:rounded-lg shadow-xl border-b sm:border border-slate-200 dark:border-slate-700 z-50 max-h-[calc(100vh-5rem)] sm:max-h-96 overflow-hidden flex flex-col animate-slide-down sm:animate-scale-in">
             <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h3>
               <div className="flex items-center space-x-2">
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllAsRead}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                    className="p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 sm:p-0 flex items-center justify-center text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                     title="Mark all as read"
                   >
                     <Check className="h-4 w-4" />
@@ -96,7 +96,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId }) => {
                 )}
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 sm:p-0 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -126,11 +126,11 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId }) => {
                             {new Date(notification.createdAt).toLocaleString()}
                           </p>
                         </div>
-                        <div className="flex-shrink-0 flex items-center space-x-1">
+                        <div className="flex-shrink-0 flex items-center space-x-2">
                           {!notification.read && (
                             <button
                               onClick={() => handleMarkAsRead(notification.id)}
-                              className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                              className="p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 sm:p-1 flex items-center justify-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                               title="Mark as read"
                             >
                               <Check className="h-4 w-4" />
@@ -138,7 +138,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId }) => {
                           )}
                           <button
                             onClick={() => handleDelete(notification.id)}
-                            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                            className="p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 sm:p-1 flex items-center justify-center text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
                             title="Delete"
                           >
                             <Trash2 className="h-4 w-4" />

@@ -123,16 +123,16 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
       {isOpen && (
         <>
           <div
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm sm:bg-transparent sm:backdrop-blur-none"
             onClick={() => setIsOpen(false)}
             aria-hidden="true"
           />
-          <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 z-50 p-4 space-y-4 max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center">
+          <div className="fixed bottom-0 left-0 right-0 sm:absolute sm:bottom-auto sm:right-0 sm:left-auto sm:mt-2 sm:w-80 w-full bg-white dark:bg-slate-800 rounded-t-2xl sm:rounded-lg shadow-xl border-t sm:border border-slate-200 dark:border-slate-700 z-50 p-4 sm:p-4 space-y-4 max-h-[85vh] sm:max-h-[80vh] overflow-y-auto animate-slide-up sm:animate-scale-in">
+            <div className="flex justify-between items-center mb-2 sm:mb-0">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Filters</h3>
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+                className="p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 sm:p-0 flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
                 aria-label="Close filters"
               >
                 <X className="h-5 w-5" />
@@ -150,7 +150,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
                   <button
                     key={filter.label}
                     onClick={() => applyQuickDate(filter.getRange)}
-                    className="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700 text-left bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200"
+                    className="px-3 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-sm border border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700 text-left bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200"
                   >
                     {filter.label}
                   </button>
@@ -167,7 +167,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
                       dateRange: { ...filters.dateRange, start }
                     });
                   }}
-                  className="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200"
+                  className="px-3 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200"
                 />
                 <input
                   type="date"
@@ -179,7 +179,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
                       dateRange: { ...filters.dateRange, end }
                     });
                   }}
-                  className="px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200"
+                  className="px-3 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200"
                 />
               </div>
             </div>
@@ -197,7 +197,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
                     category: e.target.value ? (e.target.value as EventCategory) : undefined
                   });
                 }}
-                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                className="w-full px-3 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               >
                 <option value="">All Categories</option>
                 {categoryOptions.map((cat) => (
@@ -221,7 +221,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
                     status: e.target.value ? (e.target.value as EventStatus) : undefined
                   });
                 }}
-                className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                className="w-full px-3 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               >
                 <option value="">All Statuses</option>
                 {statuses.map((status) => (
@@ -247,7 +247,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
                       location: e.target.value || undefined
                     });
                   }}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                  className="w-full px-3 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 >
                   <option value="">All Locations</option>
                   {availableLocations.map((loc) => (
@@ -274,7 +274,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
                       creatorId: e.target.value || undefined
                     });
                   }}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                  className="w-full px-3 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 text-sm border border-slate-300 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 >
                   <option value="">All Creators</option>
                   {availableCreators.map((creator) => (
@@ -290,7 +290,7 @@ const EventFiltersComponent: React.FC<EventFiltersProps> = ({
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="w-full px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-md transition-colors"
+                className="w-full px-4 py-3 sm:py-2 min-h-[48px] sm:min-h-0 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-md transition-colors"
               >
                 Clear All Filters
               </button>

@@ -205,3 +205,86 @@ button, a, .cursor-pointer {
     will-change: backdrop-filter, background-color;
     transform: translateZ(0);
 }
+
+/* --- Mobile Touch Optimization --- */
+
+/* Prevent text size adjustment on iOS */
+html {
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+/* Touch action optimization */
+button,
+a,
+input,
+select,
+textarea,
+[role="button"],
+[tabindex] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Improve touch targets on mobile */
+@media (max-width: 640px) {
+    button,
+    a[role="button"],
+    input[type="button"],
+    input[type="submit"],
+    input[type="reset"] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    /* Ensure form inputs are easily tappable */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="date"],
+    input[type="time"],
+    input[type="number"],
+    select,
+    textarea {
+        min-height: 44px;
+        font-size: 16px; /* Prevents zoom on iOS when focusing */
+    }
+}
+
+/* Prevent double-tap zoom on buttons and links */
+button,
+a,
+[role="button"] {
+    touch-action: manipulation;
+}
+
+/* Improve scrolling on mobile */
+@media (max-width: 640px) {
+    * {
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Animation for slide down (used in mobile menus) */
+.animate-slide-down {
+    animation: slideDownFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
+}
+
+/* Touch-friendly hover states (only on non-touch devices) */
+@media (hover: hover) and (pointer: fine) {
+    .btn-hover-effect:hover {
+        transform: translateY(-1px) translateZ(0);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+}
+
+/* Active states for touch devices */
+@media (hover: none) and (pointer: coarse) {
+    .btn-hover-effect:active {
+        transform: translateY(0) scale(0.97) translateZ(0);
+        opacity: 0.8;
+    }
+}
