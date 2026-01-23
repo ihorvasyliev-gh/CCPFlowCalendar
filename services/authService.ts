@@ -278,3 +278,37 @@ export const getSession = async () => {
   const { data: { session } } = await supabase.auth.getSession();
   return session;
 };
+
+// Получить список пользователей по ID
+export const getUsersByIds = async (userIds: string[]): Promise<User[]> => {
+  if (!userIds || userIds.length === 0) {
+    return [];
+  }
+
+  // Убираем дубликаты
+  const uniqueIds = Array.from(new Set(userIds));
+
+  try {
+    const { data: usersData, error } = await withTimeout(
+      supabase
+        .from('users')
+        .select('*')
+        .in('id', uniqueIds),
+      10000
+    );
+
+    if (error) {
+      console.error('Error fetching users by IDs:', error);
+      return [];
+    }
+
+    if (!usersData) {
+      return [];
+    }
+
+    return usersData.map(mapSupabaseUserToUser);
+  } catch (error) {
+    console.error('Error in getUsersByIds:', error);
+    return [];
+  }
+};

@@ -10,7 +10,7 @@ import { ToastProvider, useToast } from './contexts/ToastContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { User, Event, EventFilters, UserRole } from './types';
 import { getEvents, createEvent, updateEvent, deleteEvent, deleteRecurrenceInstance, getRecurrenceExceptions } from './services/eventService';
-import { logout as logoutService, getCurrentUser } from './services/authService';
+import { logout as logoutService, getCurrentUser, getUsersByIds } from './services/authService';
 import { supabase } from './lib/supabase';
 import { filterEvents } from './utils/filterEvents';
 import { getCachedUser, cacheUser, clearUserCache, hasValidSession } from './utils/sessionCache';
@@ -29,7 +29,9 @@ const AppContent: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
+
   const [recurrenceExceptions, setRecurrenceExceptions] = useState<Map<string, Date[]>>(new Map());
+  const [creatorNames, setCreatorNames] = useState<Record<string, string>>({});
 
   // Mobile State
   const isMobile = useMedia('(max-width: 640px)');
@@ -525,16 +527,57 @@ const AppContent: React.FC = () => {
     return Array.from(new Set(events.map(e => e.location))).sort();
   }, [events]);
 
+  // Load creator names
+  useEffect(() => {
+    if (events.length === 0) return;
+
+    const loadCreatorNames = async () => {
+      const uniqueCreatorIds = Array.from(new Set(events.map(e => e.creatorId)));
+
+      // Filter out IDs we already know
+      const unknownIds = uniqueCreatorIds.filter(id => !creatorNames[id]);
+
+      if (unknownIds.length === 0) return;
+
+      try {
+        const users = await getUsersByIds(unknownIds);
+        const newNames: Record<string, string> = {};
+
+        users.forEach(u => {
+          newNames[u.id] = u.fullName;
+        });
+
+        // For cached events where some users might not be found immediately or deleted
+        // we can fallback to IDs for now, but better to just keep them unknown until fetched
+        // or set a placeholder so we don't retry fetching endlessly if they truly don't exist
+        unknownIds.forEach(id => {
+          if (!newNames[id]) {
+            // Optional: mark as "Unknown User" or leave for retry
+            // newNames[id] = 'Unknown User'; 
+          }
+        });
+
+        if (Object.keys(newNames).length > 0) {
+          setCreatorNames(prev => ({ ...prev, ...newNames }));
+        }
+      } catch (err) {
+        console.error('Failed to load creator names', err);
+      }
+    };
+
+    // Debounce slightly or just run
+    loadCreatorNames();
+  }, [events, creatorNames]);
+
   const availableCreators = useMemo(() => {
     const creatorMap = new Map<string, string>();
     events.forEach(e => {
       if (!creatorMap.has(e.creatorId)) {
-        // In a real app, we'd fetch user names from a service
-        creatorMap.set(e.creatorId, `Creator ${e.creatorId}`);
+        creatorMap.set(e.creatorId, creatorNames[e.creatorId] || `Creator ${e.creatorId.substring(0, 8)}...`);
       }
     });
     return Array.from(creatorMap.entries()).map(([id, name]) => ({ id, name }));
-  }, [events]);
+  }, [events, creatorNames]);
 
   // Render Logic - always show content immediately (cache loads instantly)
   if (!user) {
