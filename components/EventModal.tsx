@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Event, UserRole, EventCategory, EventStatus, Attachment, EventComment, EventHistoryEntry, EventCategoryItem } from '../types';
-import { X, MapPin, Clock, Calendar as CalendarIcon, Download, Upload, Loader2, Pencil, Tag, Users, CheckCircle, XCircle, Trash2, Plus } from 'lucide-react';
+import { X, MapPin, Clock, Calendar as CalendarIcon, Download, Upload, Loader2, Pencil, Tag, Users, CheckCircle, XCircle, Trash2, Plus, ChevronDown, ExternalLink } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/date';
 import { uploadPosterToR2, uploadAttachment, addComment, deleteComment, fetchEventDetails, deleteEvent, deleteRecurrenceInstance } from '../services/eventService';
 import { rsvpToEvent, cancelRsvp, hasUserRsvped } from '../services/rsvpService';
@@ -61,6 +61,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [showCalendarDropdown, setShowCalendarDropdown] = useState(false);
 
   // Recurrence State
   const [recurrenceType, setRecurrenceType] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('none');
@@ -307,11 +308,11 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
 
   const handleRsvp = async () => {
     if (!event) return;
-    
+
     // Optimistic update: update UI immediately
     const wasRsvped = userHasRsvped;
     const previousAttendees = [...(attendees || [])];
-    
+
     // Update local state immediately
     if (wasRsvped) {
       setUserHasRsvped(false);
@@ -330,7 +331,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
         onEventUpdate(updatedEvent);
       }
     }
-    
+
     // Sync with server in background (no loading state)
     try {
       if (wasRsvped) {
@@ -369,7 +370,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
 
   const handleAddComment = async (content: string) => {
     if (!event) return;
-    
+
     // Optimistic update: add comment immediately with temporary ID
     const tempId = `temp-${Date.now()}-${Math.random()}`;
     const optimisticComment: EventComment = {
@@ -380,22 +381,22 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
       content: content,
       createdAt: new Date()
     };
-    
+
     // Update local state immediately
     setComments(prev => [...prev, optimisticComment]);
     if (onEventUpdate) {
       const updatedEvent = { ...event, comments: [...(event.comments || []), optimisticComment] };
       onEventUpdate(updatedEvent);
     }
-    
+
     // Sync with server in background
     try {
       const serverComment = await addComment(event.id, currentUserId, currentUserName, content);
       // Replace temporary comment with server response
       setComments(prev => prev.map(c => c.id === tempId ? serverComment : c));
       if (onEventUpdate) {
-        const updatedEvent = { 
-          ...event, 
+        const updatedEvent = {
+          ...event,
           comments: (event.comments || []).map(c => c.id === tempId ? serverComment : c)
         };
         onEventUpdate(updatedEvent);
@@ -405,8 +406,8 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
       // Rollback optimistic update on error
       setComments(prev => prev.filter(c => c.id !== tempId));
       if (onEventUpdate) {
-        const updatedEvent = { 
-          ...event, 
+        const updatedEvent = {
+          ...event,
           comments: (event.comments || []).filter(c => c.id !== tempId)
         };
         onEventUpdate(updatedEvent);
@@ -430,33 +431,70 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
     }
   };
 
-  const handleAddToCalendar = () => {
-    if (!event) return;
-    
-    // Format date for Outlook (YYYYMMDDTHHmmss)
-    const formatOutlookDate = (date: Date): string => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      const seconds = String(date.getSeconds()).padStart(2, '0');
-      return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+  const getCalendarLinks = () => {
+    if (!event) return null;
+
+    const title = encodeURIComponent(event.title || '');
+    const description = encodeURIComponent(event.description || '');
+    const location = encodeURIComponent(event.location || '');
+
+    // Format dates (UTC)
+    const formatDate = (date: Date) => {
+      return date.toISOString().replace(/-|:|\.\d+/g, '');
     };
-    
-    const startDate = formatOutlookDate(event.date);
-    const endDate = formatOutlookDate(new Date(event.date.getTime() + 60 * 60 * 1000)); // Default 1 hour duration
-    
-    // Build Outlook calendar URL
-    const outlookUrl = `outlookcal://calendar/action=compose&subject=${encodeURIComponent(event.title)}&startdt=${startDate}&enddt=${endDate}&location=${encodeURIComponent(event.location)}&body=${encodeURIComponent(event.description)}`;
-    
-    // Try to open Outlook, fallback to window.open if protocol handler fails
-    try {
-      window.location.href = outlookUrl;
-    } catch (e) {
-      // Fallback: try opening in new window
-      window.open(outlookUrl, '_blank');
-    }
+
+    const start = formatDate(event.date);
+    const end = formatDate(new Date(event.date.getTime() + 60 * 60 * 1000)); // 1 hour default
+
+    return {
+      google: `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${description}&location=${location}`,
+      outlook: `https://outlook.live.com/calendar/0/deeplink/compose?subject=${title}&body=${description}&location=${location}&startdt=${event.date.toISOString()}&enddt=${new Date(event.date.getTime() + 60 * 60 * 1000).toISOString()}`,
+      office365: `https://outlook.office.com/calendar/0/deeplink/compose?subject=${title}&body=${description}&location=${location}&startdt=${event.date.toISOString()}&enddt=${new Date(event.date.getTime() + 60 * 60 * 1000).toISOString()}`,
+    };
+  };
+
+  const handleDownloadIcs = () => {
+    if (!event) return;
+
+    const formatDate = (date: Date) => {
+      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    };
+
+    const escapeICS = (str: string) => {
+      return str
+        .replace(/\\/g, '\\\\')
+        .replace(/;/g, '\\;')
+        .replace(/,/g, '\\,')
+        .replace(/\n/g, '\\n');
+    };
+
+    const startDate = formatDate(event.date);
+    const endDate = formatDate(new Date(event.date.getTime() + 60 * 60 * 1000));
+
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//CCP Flow/Calendar//EN',
+      'BEGIN:VEVENT',
+      `UID:${event.id || Date.now()}@ccpflow.com`,
+      `DTSTAMP:${formatDate(new Date())}`,
+      `DTSTART:${startDate}`,
+      `DTEND:${endDate}`,
+      `SUMMARY:${escapeICS(event.title || '')}`,
+      `DESCRIPTION:${escapeICS(event.description || '')}`,
+      `LOCATION:${escapeICS(event.location || '')}`,
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = window.URL.createObjectURL(blob);
+    link.setAttribute('download', `${(event.title || 'event').replace(/[^a-z0-9]/gi, '_')}.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setShowCalendarDropdown(false);
   };
 
   const handleDeleteClick = () => {
@@ -564,10 +602,10 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                   <div className="rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800">
                     {event.posterUrl && (
                       <div className="relative group">
-                        <LazyImage 
-                          src={event.posterUrl} 
-                          alt={event.title} 
-                          className="w-full h-56" 
+                        <LazyImage
+                          src={event.posterUrl}
+                          alt={event.title}
+                          className="w-full h-56"
                         />
                         <a href={event.posterUrl} download className="absolute bottom-3 right-3 p-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-all text-slate-700 dark:text-slate-200 hover:scale-105">
                           <Download className="h-4 w-4" />
@@ -651,9 +689,59 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                   </div>
                 )}
 
-                <button onClick={handleAddToCalendar} className="w-full py-3 sm:py-2.5 min-h-[44px] sm:min-h-0 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                  Add to Outlook Calendar
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowCalendarDropdown(!showCalendarDropdown)}
+                    className="w-full py-3 sm:py-2.5 min-h-[44px] sm:min-h-0 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <CalendarIcon className="h-4 w-4" />
+                    Add to Calendar
+                    <ChevronDown className={`h-4 w-4 transition-transform ${showCalendarDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {showCalendarDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowCalendarDropdown(false)} />
+                      <div className="absolute bottom-full left-0 right-0 mb-2 p-1.5 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 z-20 animate-scale-in origin-bottom">
+                        <a
+                          href={getCalendarLinks()?.office365}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center w-full px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors group"
+                        >
+                          <span className="flex-1 font-medium">Office 365</span>
+                          <ExternalLink className="h-3.5 w-3.5 text-slate-400 group-hover:text-brand-500" />
+                        </a>
+                        <a
+                          href={getCalendarLinks()?.outlook}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center w-full px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors group"
+                        >
+                          <span className="flex-1">Outlook.com</span>
+                          <ExternalLink className="h-3.5 w-3.5 text-slate-400 group-hover:text-brand-500" />
+                        </a>
+                        <a
+                          href={getCalendarLinks()?.google}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center w-full px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors group"
+                        >
+                          <span className="flex-1">Google Calendar</span>
+                          <ExternalLink className="h-3.5 w-3.5 text-slate-400 group-hover:text-brand-500" />
+                        </a>
+                        <div className="h-px bg-slate-100 dark:bg-slate-700 my-1" />
+                        <button
+                          onClick={handleDownloadIcs}
+                          className="flex items-center w-full px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors group text-left"
+                        >
+                          <span className="flex-1">Download .ics File</span>
+                          <Download className="h-3.5 w-3.5 text-slate-400 group-hover:text-brand-500" />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
 
                 <EventComments
                   comments={comments}
@@ -734,10 +822,10 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Poster Image</label>
                   <div onClick={() => fileInputRef.current?.click()} className="border border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-4 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors">
                     {previewUrl ? (
-                      <LazyImage 
-                        src={previewUrl} 
-                        alt="Preview" 
-                        className="h-32 mx-auto object-contain rounded-lg" 
+                      <LazyImage
+                        src={previewUrl}
+                        alt="Preview"
+                        className="h-32 mx-auto object-contain rounded-lg"
                       />
                     ) : (
                       <Upload className="h-8 w-8 mx-auto text-slate-400 mb-2" />
@@ -951,20 +1039,20 @@ export default React.memo(EventModal, (prevProps, nextProps) => {
   if (prevProps.role !== nextProps.role) return false;
   if (prevProps.currentUserId !== nextProps.currentUserId) return false;
   if (prevProps.currentUserName !== nextProps.currentUserName) return false;
-  
+
   // Compare event objects
   if (prevProps.event?.id !== nextProps.event?.id) return false;
   if (prevProps.event?.title !== nextProps.event?.title) return false;
   if (prevProps.event?.date?.getTime() !== nextProps.event?.date?.getTime()) return false;
   if (prevProps.event?.status !== nextProps.event?.status) return false;
   if (prevProps.initialDate?.getTime() !== nextProps.initialDate?.getTime()) return false;
-  
+
   // Compare callbacks
   if (prevProps.onClose !== nextProps.onClose) return false;
   if (prevProps.onSave !== nextProps.onSave) return false;
   if (prevProps.onUpdate !== nextProps.onUpdate) return false;
   if (prevProps.onEventUpdate !== nextProps.onEventUpdate) return false;
-  
+
   return true; // Props are equal, skip re-render
 });
 
