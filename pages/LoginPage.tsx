@@ -88,8 +88,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-xl overflow-hidden">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-900 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-xl shadow-xl overflow-hidden">
         <div className="bg-blue-600 px-8 py-6 text-center">
           <div className="bg-white/20 p-3 rounded-full inline-block mb-3">
              <Calendar className="h-8 w-8 text-white" />
@@ -100,22 +100,22 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
         <form onSubmit={handleSubmit} className="px-8 py-8 space-y-6">
           {error && (
-            <div className="bg-red-50 text-red-600 text-sm p-3 rounded-md border border-red-100">
+            <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm p-3 rounded-md border border-red-100 dark:border-red-800">
               {error}
             </div>
           )}
 
           {isSignUp && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <UserIcon className="h-5 w-5 text-slate-400" />
+                  <UserIcon className="h-5 w-5 text-slate-400 dark:text-slate-500" />
                 </div>
                 <input
                   type="text"
                   required
-                  className="pl-10 block w-full border border-slate-300 rounded-lg py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                  className="pl-10 block w-full border border-slate-300 dark:border-slate-600 rounded-lg py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
                   placeholder="John Doe"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
@@ -125,15 +125,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email Address</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Mail className="h-5 w-5 text-slate-400" />
+                <Mail className="h-5 w-5 text-slate-400 dark:text-slate-500" />
               </div>
               <input
                 type="email"
                 required
-                className="pl-10 block w-full border border-slate-300 rounded-lg py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                className="pl-10 block w-full border border-slate-300 dark:border-slate-600 rounded-lg py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
                 placeholder="you@ccp.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -142,15 +142,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Lock className="h-5 w-5 text-slate-400" />
+                <Lock className="h-5 w-5 text-slate-400 dark:text-slate-500" />
               </div>
               <input
                 type="password"
                 required
-                className="pl-10 block w-full border border-slate-300 rounded-lg py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                className="pl-10 block w-full border border-slate-300 dark:border-slate-600 rounded-lg py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -158,7 +158,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               />
             </div>
             {isSignUp && (
-              <p className="text-xs text-slate-500 mt-1">Password must be at least 6 characters</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Password must be at least 6 characters</p>
             )}
           </div>
 

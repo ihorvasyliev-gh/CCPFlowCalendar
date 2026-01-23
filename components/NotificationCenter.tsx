@@ -63,7 +63,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId }) => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-slate-300 hover:text-white transition-colors rounded-full hover:bg-slate-800"
+        className="relative p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
         aria-label="Notifications"
       >
         <Bell className="h-5 w-5" />
@@ -81,14 +81,14 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId }) => {
             onClick={() => setIsOpen(false)}
             aria-hidden="true"
           />
-          <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-slate-200 z-50 max-h-96 overflow-hidden flex flex-col">
-            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+          <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 z-50 max-h-96 overflow-hidden flex flex-col">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h3>
               <div className="flex items-center space-x-2">
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllAsRead}
-                    className="text-xs text-blue-600 hover:text-blue-800"
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                     title="Mark all as read"
                   >
                     <Check className="h-4 w-4" />
@@ -96,7 +96,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId }) => {
                 )}
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -105,24 +105,24 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId }) => {
 
             <div className="overflow-y-auto flex-1">
               {isLoading ? (
-                <div className="p-8 text-center text-gray-500">Loading...</div>
+                <div className="p-8 text-center text-gray-500 dark:text-gray-400">Loading...</div>
               ) : notifications.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">No notifications</div>
+                <div className="p-8 text-center text-gray-500 dark:text-gray-400">No notifications</div>
               ) : (
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-gray-100 dark:divide-gray-700">
                   {notifications.map(notification => (
                     <div
                       key={notification.id}
-                      className={`p-4 hover:bg-gray-50 transition-colors ${!notification.read ? 'bg-blue-50' : ''}`}
+                      className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${!notification.read ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
                     >
                       <div className="flex items-start space-x-3">
                         <div className="flex-shrink-0 mt-0.5">
                           {getIcon(notification.type)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900">{notification.title}</p>
-                          <p className="text-xs text-gray-600 mt-1">{notification.message}</p>
-                          <p className="text-xs text-gray-400 mt-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">{notification.title}</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">{notification.message}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                             {new Date(notification.createdAt).toLocaleString()}
                           </p>
                         </div>
@@ -130,7 +130,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId }) => {
                           {!notification.read && (
                             <button
                               onClick={() => handleMarkAsRead(notification.id)}
-                              className="text-blue-600 hover:text-blue-800"
+                              className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                               title="Mark as read"
                             >
                               <Check className="h-4 w-4" />
@@ -138,7 +138,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId }) => {
                           )}
                           <button
                             onClick={() => handleDelete(notification.id)}
-                            className="text-red-600 hover:text-red-800"
+                            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
                             title="Delete"
                           >
                             <Trash2 className="h-4 w-4" />

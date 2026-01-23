@@ -31,23 +31,23 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, events }) =>
         <div className="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={onClose}></div>
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-        <div className="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md w-full">
-          <div className="bg-slate-50 px-4 py-3 sm:px-6 flex justify-between items-center border-b border-gray-100">
-            <h3 className="text-lg leading-6 font-semibold text-gray-900" id="export-modal-title">
+        <div className="inline-block align-bottom bg-white dark:bg-slate-800 rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md w-full">
+          <div className="bg-slate-50 dark:bg-slate-700/50 px-4 py-3 sm:px-6 flex justify-between items-center border-b border-gray-100 dark:border-gray-700">
+            <h3 className="text-lg leading-6 font-semibold text-gray-900 dark:text-white" id="export-modal-title">
               Export Events
             </h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-500 focus:outline-none">
+            <button onClick={onClose} className="text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none">
               <X className="h-6 w-6" />
             </button>
           </div>
 
-          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <p className="text-sm text-gray-600 mb-4">
+          <div className="bg-white dark:bg-slate-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
               Export {events.length} event{events.length !== 1 ? 's' : ''} to your preferred format.
             </p>
 
             <div className="space-y-3">
-              <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+              <label className="flex items-center p-4 border-2 border-gray-200 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                 <input
                   type="radio"
                   name="format"
@@ -58,14 +58,14 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, events }) =>
                 />
                 <div className="ml-3 flex-1">
                   <div className="flex items-center">
-                    <Calendar className="h-5 w-5 text-blue-500 mr-2" />
-                    <span className="text-sm font-medium text-gray-900">iCal Format (.ics)</span>
+                    <Calendar className="h-5 w-5 text-blue-500 dark:text-blue-400 mr-2" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">iCal Format (.ics)</span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Import into Google Calendar, Outlook, or Apple Calendar</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Import into Google Calendar, Outlook, or Apple Calendar</p>
                 </div>
               </label>
 
-              <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+              <label className="flex items-center p-4 border-2 border-gray-200 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                 <input
                   type="radio"
                   name="format"
@@ -76,16 +76,16 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, events }) =>
                 />
                 <div className="ml-3 flex-1">
                   <div className="flex items-center">
-                    <FileText className="h-5 w-5 text-green-500 mr-2" />
-                    <span className="text-sm font-medium text-gray-900">CSV Format (.csv)</span>
+                    <FileText className="h-5 w-5 text-green-500 dark:text-green-400 mr-2" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">CSV Format (.csv)</span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Open in Excel, Google Sheets, or any spreadsheet app</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Open in Excel, Google Sheets, or any spreadsheet app</p>
                 </div>
               </label>
             </div>
           </div>
 
-          <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <div className="bg-gray-50 dark:bg-slate-700/50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
             <button
               onClick={handleExport}
               className="w-full inline-flex justify-center items-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
@@ -95,7 +95,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, events }) =>
             </button>
             <button
               onClick={onClose}
-              className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+              className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-slate-700 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
             >
               Cancel
             </button>

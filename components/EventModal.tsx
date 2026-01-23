@@ -502,9 +502,9 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                   <div className="flex items-center gap-2 flex-wrap">
                     {event.status === 'draft' && <span className="px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 rounded-full">Draft</span>}
                     {event.category && (
-                      <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${event.category === 'meeting' ? 'bg-blue-50 text-blue-700' :
-                        event.category === 'workshop' ? 'bg-purple-50 text-purple-700' :
-                          'bg-gray-100 text-gray-700'
+                      <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${event.category === 'meeting' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-100' :
+                        event.category === 'workshop' ? 'bg-purple-50 text-purple-700 dark:bg-purple-900 dark:text-purple-100' :
+                          'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
                         }`}>
                         {event.category}
                       </span>
@@ -546,7 +546,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                           alt={event.title} 
                           className="w-full h-56" 
                         />
-                        <a href={event.posterUrl} download className="absolute bottom-3 right-3 p-2 bg-white/90 backdrop-blur rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-all text-slate-700 hover:scale-105">
+                        <a href={event.posterUrl} download className="absolute bottom-3 right-3 p-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-all text-slate-700 dark:text-slate-200 hover:scale-105">
                           <Download className="h-4 w-4" />
                         </a>
                       </div>
