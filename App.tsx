@@ -16,6 +16,9 @@ import { filterEvents } from './utils/filterEvents';
 import { getCachedUser, cacheUser, clearUserCache, hasValidSession } from './utils/sessionCache';
 import { getCachedEvents, cacheEvents, clearEventsCache } from './utils/eventsCache';
 import { clearRecurrenceCache } from './utils/recurrence';
+import BottomNavigation from './components/BottomNavigation';
+import FloatingActionButton from './components/FloatingActionButton';
+import { useMedia } from './hooks/useMedia';
 
 // Lazy load modals for code splitting
 const EventModal = lazy(() => import('./components/EventModal'));
@@ -28,6 +31,9 @@ const AppContent: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [recurrenceExceptions, setRecurrenceExceptions] = useState<Map<string, Date[]>>(new Map());
+
+  // Mobile State
+  const isMobile = useMedia('(max-width: 640px)');
 
   // Search and Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -148,12 +154,12 @@ const AppContent: React.FC = () => {
         const data = await getEvents();
         setEvents(data);
         cacheEvents(data);
-        
+
         // Load recurrence exceptions for recurring events
         const recurringEventIds = data
           .filter(e => e.recurrence && e.recurrence.type !== 'none')
           .map(e => e.id);
-        
+
         if (recurringEventIds.length > 0) {
           const exceptionsMap = new Map<string, Date[]>();
           await Promise.all(
@@ -210,12 +216,12 @@ const AppContent: React.FC = () => {
               }
               return prev;
             });
-            
+
             // Update recurrence exceptions
             const recurringEventIds = data
               .filter(e => e.recurrence && e.recurrence.type !== 'none')
               .map(e => e.id);
-            
+
             if (recurringEventIds.length > 0) {
               const exceptionsMap = new Map<string, Date[]>();
               await Promise.all(
@@ -283,7 +289,7 @@ const AppContent: React.FC = () => {
 
   const handleSaveEvent = useCallback(async (eventData: Omit<Event, 'id' | 'createdAt'>) => {
     if (!user) return;
-    
+
     // Optimistic update: create event immediately with temporary ID
     const tempId = `temp-${Date.now()}-${Math.random()}`;
     const optimisticEvent: Event = {
@@ -296,18 +302,18 @@ const AppContent: React.FC = () => {
       history: undefined,
       attachments: eventData.attachments || undefined
     };
-    
+
     // Update UI immediately
     setEvents((prev) => {
       const next = [...prev, optimisticEvent];
       cacheEvents(next);
       return next;
     });
-    
+
     // Close modal immediately for better UX
     setIsModalOpen(false);
     setTimeout(() => setSelectedEvent(null), 200);
-    
+
     // Sync with server in background
     try {
       const serverEvent = await createEvent(eventData, user.id, user.fullName);
@@ -336,13 +342,13 @@ const AppContent: React.FC = () => {
 
   const handleUpdateEvent = useCallback(async (id: string, eventData: Omit<Event, 'id' | 'createdAt'>) => {
     if (!user) return;
-    
+
     // Find original event for rollback
     const originalEvent = events.find(e => e.id === id);
     if (!originalEvent) {
       throw new Error('Event not found');
     }
-    
+
     // Optimistic update: update event immediately
     const optimisticEvent: Event = {
       ...originalEvent,
@@ -351,7 +357,7 @@ const AppContent: React.FC = () => {
       creatorId: originalEvent.creatorId,
       createdAt: originalEvent.createdAt
     };
-    
+
     // Update UI immediately
     setEvents((prev) => {
       const next = prev.map((e) => (e.id === id ? optimisticEvent : e));
@@ -359,11 +365,11 @@ const AppContent: React.FC = () => {
       return next;
     });
     setSelectedEvent(prev => prev?.id === id ? optimisticEvent : prev);
-    
+
     // Close modal immediately for better UX
     setIsModalOpen(false);
     setTimeout(() => setSelectedEvent(null), 200);
-    
+
     // Sync with server in background
     try {
       const serverEvent = await updateEvent(id, eventData, user.id, user.fullName);
@@ -408,14 +414,14 @@ const AppContent: React.FC = () => {
 
   const handleDeleteInstance = useCallback(async (eventId: string, instanceDate: Date) => {
     if (!user) return;
-    
+
     // Обновляем исключения
     setRecurrenceExceptions((prev) => {
       const next = new Map(prev);
       const exceptions = next.get(eventId) || [];
       const normalizedDate = new Date(instanceDate);
       normalizedDate.setHours(0, 0, 0, 0);
-      
+
       // Добавляем исключение, если его еще нет
       if (!exceptions.some(d => {
         const dNormalized = new Date(d);
@@ -426,44 +432,44 @@ const AppContent: React.FC = () => {
       }
       return next;
     });
-    
+
     // Очищаем кэш повторений
     clearRecurrenceCache();
-    
+
     showToast('Event instance deleted', 'success');
   }, [user, showToast]);
 
   const handleDeleteEvent = useCallback(async (id: string) => {
     if (!user) return;
-    
+
     // Find the event to determine if it's recurring
     const eventToDelete = events.find(e => e.id === id);
     if (!eventToDelete) {
       showToast('Event not found', 'error');
       return;
     }
-    
+
     // Optimistic update: remove event immediately
     setEvents((prev) => {
       const next = prev.filter(e => e.id !== id);
       cacheEvents(next);
       return next;
     });
-    
+
     // Clear recurrence cache
     clearRecurrenceCache();
-    
+
     // Close modal if it's open for this event
     if (selectedEvent?.id === id) {
       setIsModalOpen(false);
       setTimeout(() => setSelectedEvent(null), 200);
     }
-    
+
     // Sync with server in background
     try {
       await deleteEvent(id, user.id, user.fullName);
       showToast('Event deleted successfully', 'success');
-      
+
       // Reload exceptions if it was a recurring event
       if (eventToDelete.recurrence && eventToDelete.recurrence.type !== 'none') {
         setRecurrenceExceptions((prev) => {
@@ -566,8 +572,8 @@ const AppContent: React.FC = () => {
             </div>
           </div>
         ) : (
-          <CalendarView 
-            events={filteredEvents} 
+          <CalendarView
+            events={filteredEvents}
             onEventClick={handleEventClick}
             onPrefetchMonth={handlePrefetchMonth}
             onAddEventForDate={user.role === UserRole.ADMIN ? handleAddEventForDate : undefined}
@@ -606,11 +612,33 @@ const AppContent: React.FC = () => {
         </Suspense>
       )}
 
-      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-auto py-6">
+      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-auto py-6 pb-24 md:pb-6">
         <div className="max-w-7xl mx-auto px-4 text-center text-slate-500 dark:text-slate-400 text-sm">
           &copy; {new Date().getFullYear()} Cork City Partnership. Internal Use Only.
         </div>
       </footer>
+
+      {isMobile && (
+        <>
+          <FloatingActionButton onClick={handleCreateClick} />
+          <BottomNavigation
+            user={user}
+            onHomeClick={() => {
+              // Just scroll to top or reset view?
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onCreateClick={handleCreateClick}
+            onProfileClick={() => {
+              // Simple profile action for now - maybe toggle mobile menu or just show user info
+              // Since we don't have a dedicated profile page, we'll re-use the mobile menu for now or just do nothing/toast
+              // Let's make it toggle the mobile menu if possible, or just log out confirm?
+              // For now, let's wire it to a toast or simple action
+              showToast('Profile settings coming soon', 'info');
+            }}
+            activeTab="home"
+          />
+        </>
+      )}
     </div>
   );
 };

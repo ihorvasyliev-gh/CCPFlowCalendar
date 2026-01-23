@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Event, ViewMode, EventCategory, UserRole } from '../types';
 import { getDaysInMonth, getFirstDayOfMonth, isSameDay, addMonths } from '../utils/date';
 import { expandRecurringEvents } from '../utils/recurrence';
-import { ChevronLeft, ChevronRight, Grid, List as ListIcon, MapPin, Clock, Tag, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Grid, List as ListIcon, MapPin, Clock, Plus } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useMedia } from '../hooks/useMedia';
 
 interface CalendarViewProps {
   events: Event[];
@@ -18,6 +19,46 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const { theme } = useTheme();
+
+  // Mobile detection
+  const isMobile = useMedia('(max-width: 640px)');
+
+  // Auto-switch view mode on mobile
+  useEffect(() => {
+    if (isMobile) {
+      setViewMode('list');
+    } else {
+      setViewMode('grid');
+    }
+  }, [isMobile]);
+
+  // Swipe Gestures
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe) {
+      nextMonth();
+    }
+    if (isRightSwipe) {
+      prevMonth();
+    }
+  };
 
   const daysInMonth = getDaysInMonth(currentDate);
   const firstDay = getFirstDayOfMonth(currentDate);
@@ -134,7 +175,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
   };
 
   return (
-    <div className={`rounded-2xl overflow-hidden animate-fade-in border border-slate-200 dark:border-slate-800 ${theme === 'dark' ? 'glass-panel-dark' : 'bg-white shadow-sm'}`}>
+    <div
+      className={`rounded-2xl overflow-hidden animate-fade-in border border-slate-200 dark:border-slate-800 ${theme === 'dark' ? 'glass-panel-dark' : 'bg-white shadow-sm'}`}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
 
       {/* Calendar Header */}
       <div className="p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-center border-b border-slate-100 dark:border-slate-800 gap-3 sm:gap-4">

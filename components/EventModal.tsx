@@ -531,7 +531,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[60] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
       <div className="flex items-end justify-center min-h-screen pt-0 px-0 pb-0 text-center sm:flex sm:items-center sm:p-0 sm:pt-4 sm:px-4 sm:pb-20">
 
         {/* Transparent Backdrop */}
@@ -539,8 +539,8 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
 
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-        {/* Modal Panel - Minimalist */}
-        <div className={`relative inline-block align-bottom rounded-t-3xl sm:rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full h-full sm:h-auto max-h-[95vh] sm:max-h-[90vh] border-t sm:border border-white/20 animate-scale-in ${theme === 'dark' ? 'glass-panel-dark' : 'bg-white'}`}>
+        {/* Modal Panel - Full Screen on Mobile */}
+        <div className={`relative inline-block align-bottom rounded-none sm:rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] border-t sm:border border-white/20 animate-scale-in ${theme === 'dark' ? 'glass-panel-dark' : 'bg-white'}`}>
 
           {/* Header */}
           <div className="px-4 sm:px-6 py-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-inherit z-10">
@@ -553,7 +553,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
           </div>
 
           {/* Body */}
-          <div className="px-4 sm:px-6 py-4 sm:py-6 max-h-[calc(95vh-160px)] sm:max-h-[calc(90vh-140px)] overflow-y-auto custom-scrollbar pb-20 sm:pb-4">
+          <div className="px-4 sm:px-6 py-4 sm:py-6 h-[calc(100dvh-73px)] sm:h-auto max-h-none sm:max-h-[calc(90vh-140px)] overflow-y-auto custom-scrollbar pb-20 sm:pb-4">
 
             {/* VIEW MODE */}
             {!showForm && event ? (
