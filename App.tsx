@@ -17,7 +17,6 @@ import { getCachedUser, cacheUser, clearUserCache, hasValidSession } from './uti
 import { getCachedEvents, cacheEvents, clearEventsCache } from './utils/eventsCache';
 import { clearRecurrenceCache } from './utils/recurrence';
 import BottomNavigation from './components/BottomNavigation';
-import FloatingActionButton from './components/FloatingActionButton';
 import { useMedia } from './hooks/useMedia';
 
 // Lazy load modals for code splitting
@@ -620,7 +619,6 @@ const AppContent: React.FC = () => {
 
       {isMobile && (
         <>
-          <FloatingActionButton onClick={handleCreateClick} />
           <BottomNavigation
             user={user}
             onHomeClick={() => {

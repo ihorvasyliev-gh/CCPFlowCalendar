@@ -151,15 +151,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
                   </button>
                 )}
 
-                {user.role === UserRole.ADMIN && (
-                  <button
-                    onClick={handleAddEventClickMobile}
-                    className="w-full flex items-center space-x-3 text-left px-4 py-3 min-h-[48px] bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-lg transition-all font-medium hover:bg-slate-800 dark:hover:bg-slate-200"
-                  >
-                    <PlusCircle className="h-5 w-5" />
-                    <span>New Event</span>
-                  </button>
-                )}
+
 
                 <button
                   onClick={onLogout}
