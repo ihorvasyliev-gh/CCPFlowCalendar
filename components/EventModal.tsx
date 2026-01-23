@@ -432,8 +432,31 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
 
   const handleAddToCalendar = () => {
     if (!event) return;
-    const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${event.date.toISOString().replace(/-|:|\.\d\d\d/g, "")}/${new Date(event.date.getTime() + 60 * 60 * 1000).toISOString().replace(/-|:|\.\d\d\d/g, "")}&details=${encodeURIComponent(event.description)}&location=${encodeURIComponent(event.location)}&sf=true&output=xml`;
-    window.open(googleUrl, '_blank');
+    
+    // Format date for Outlook (YYYYMMDDTHHmmss)
+    const formatOutlookDate = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+    };
+    
+    const startDate = formatOutlookDate(event.date);
+    const endDate = formatOutlookDate(new Date(event.date.getTime() + 60 * 60 * 1000)); // Default 1 hour duration
+    
+    // Build Outlook calendar URL
+    const outlookUrl = `outlookcal://calendar/action=compose&subject=${encodeURIComponent(event.title)}&startdt=${startDate}&enddt=${endDate}&location=${encodeURIComponent(event.location)}&body=${encodeURIComponent(event.description)}`;
+    
+    // Try to open Outlook, fallback to window.open if protocol handler fails
+    try {
+      window.location.href = outlookUrl;
+    } catch (e) {
+      // Fallback: try opening in new window
+      window.open(outlookUrl, '_blank');
+    }
   };
 
   const handleDeleteClick = () => {
@@ -629,7 +652,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                 )}
 
                 <button onClick={handleAddToCalendar} className="w-full py-3 sm:py-2.5 min-h-[44px] sm:min-h-0 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                  Add to Google Calendar
+                  Add to Outlook Calendar
                 </button>
 
                 <EventComments
