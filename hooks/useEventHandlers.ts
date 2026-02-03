@@ -133,12 +133,13 @@ export function useEventHandlers(
       return next;
     });
     setSelectedEvent((prev) => (prev?.id === updatedEvent.id ? updatedEvent : prev));
-    if (user && updatedEvent.attendees) {
+    if (user && updatedEvent.attendees !== undefined) {
       const isAttending = updatedEvent.attendees.includes(user.id);
+      const instanceKey = updatedEvent.instanceKey ?? `${updatedEvent.id}_${updatedEvent.date.getTime()}`;
       setUserRsvpEventIds((prev) => {
         const next = new Set(prev);
-        if (isAttending) next.add(updatedEvent.id);
-        else next.delete(updatedEvent.id);
+        if (isAttending) next.add(instanceKey);
+        else next.delete(instanceKey);
         cacheRsvps(Array.from(next));
         return next;
       });

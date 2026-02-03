@@ -98,10 +98,11 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
       if (event) {
         // We have an event (View/Edit mode)
 
-        // Only reset interaction flag if we are viewing a different event
-        if (event.id !== prevEventId.current) {
+        // Only reset interaction flag if we are viewing a different event or occurrence
+        const instanceKey = event.instanceKey ?? event.id;
+        if (instanceKey !== prevEventId.current) {
           hasInteractedWithRsvp.current = false;
-          prevEventId.current = event.id;
+          prevEventId.current = instanceKey;
         }
 
         setTitle(event.title);
@@ -163,8 +164,8 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
         let isActive = true;
 
         if (needsLoading) {
-          // Load in background without blocking UI
-          fetchEventDetails(event.id).then(details => {
+          // Load in background without blocking UI (per-occurrence for recurring events)
+          fetchEventDetails(event.id, event.date).then(details => {
             if (!isActive) return;
 
             if (details.attachments) setAttachments(details.attachments);
@@ -383,12 +384,12 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
       }
     }
 
-    // Sync with server in background (no loading state)
+    // Sync with server in background (no loading state); per-occurrence for recurring
     try {
       if (wasRsvped) {
-        await cancelRsvp(event.id, currentUserId);
+        await cancelRsvp(event.id, currentUserId, event.date);
       } else {
-        await rsvpToEvent(event.id, currentUserId, currentUserName);
+        await rsvpToEvent(event.id, currentUserId, currentUserName, event.date);
       }
     } catch (err) {
       console.error('Failed to sync RSVP with server:', err);

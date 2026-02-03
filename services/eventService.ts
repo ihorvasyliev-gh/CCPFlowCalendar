@@ -87,8 +87,10 @@ const fetchRelatedBatch = async (eventIds: string[]): Promise<RelatedData> => {
   return { attachmentsByEvent, commentsByEvent, historyByEvent, rsvpsByEvent };
 };
 
-// Загрузка связанных данных для одного события (create/update/addComment)
-const fetchRelatedForOne = async (eventId: string): Promise<RelatedData> => {
+// Загрузка связанных данных для одного события (create/update/addComment).
+// occurrenceDate — дата вхождения (для повторяющихся событий — конкретное вхождение).
+const fetchRelatedForOne = async (eventId: string, occurrenceDate: Date): Promise<RelatedData> => {
+  const occurrenceIso = occurrenceDate.toISOString();
   const [attachmentsRes, commentsRes, historyRes, rsvpsRes] = await Promise.all([
     supabase
       .from('event_attachments')
@@ -109,6 +111,7 @@ const fetchRelatedForOne = async (eventId: string): Promise<RelatedData> => {
       .from('rsvps')
       .select('user_id')
       .eq('event_id', eventId)
+      .eq('occurrence_date', occurrenceIso)
       .eq('status', 'going')
   ]);
 
@@ -148,10 +151,14 @@ const fetchRelatedForOne = async (eventId: string): Promise<RelatedData> => {
 };
 
 /**
- * Lazy load full details for an event
+ * Lazy load full details for an event (for a specific occurrence).
+ * occurrenceDate — date of the instance (event.date for the opened instance).
  */
-export const fetchEventDetails = async (eventId: string): Promise<Partial<Event>> => {
-  const related = await fetchRelatedForOne(eventId);
+export const fetchEventDetails = async (
+  eventId: string,
+  occurrenceDate: Date
+): Promise<Partial<Event>> => {
+  const related = await fetchRelatedForOne(eventId, occurrenceDate);
   const attachments = related.attachmentsByEvent[eventId] || [];
   const comments = related.commentsByEvent[eventId] || [];
   const history = related.historyByEvent[eventId] || [];
@@ -184,7 +191,8 @@ const mapSupabaseEventToEvent = async (
     attendees = related.rsvpsByEvent[eventId];
   } else if (!skipRelatedFetch) {
     // Create/Update case: fetch everything immediately to return full object
-    const one = await fetchRelatedForOne(eventId);
+    const eventDate = new Date(supabaseEvent.date);
+    const one = await fetchRelatedForOne(eventId, eventDate);
     attachments = one.attachmentsByEvent[eventId] ?? [];
     comments = one.commentsByEvent[eventId] ?? [];
     history = one.historyByEvent[eventId] ?? [];

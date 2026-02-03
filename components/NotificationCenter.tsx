@@ -15,11 +15,14 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId, events 
   const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Filter upcoming events that user has RSVP'd to
+  // Instance key for RSVP: per-occurrence for recurring, single for non-recurring
+  const getInstanceKey = (e: Event) => e.instanceKey ?? `${e.id}_${new Date(e.date).getTime()}`;
+
+  // Filter upcoming events (occurrences) that user has RSVP'd to
   const upcomingRsvpEvents = React.useMemo(() => {
     const now = new Date();
     return events
-      .filter(e => userRsvpEventIds.has(e.id)) // User RSVP'd
+      .filter(e => userRsvpEventIds.has(getInstanceKey(e))) // User RSVP'd to this occurrence
       .filter(e => new Date(e.date) > now) // Future event
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) // Sort by date ascending
       .slice(0, 5); // Take top 5

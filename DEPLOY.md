@@ -70,15 +70,16 @@ CREATE TABLE IF NOT EXISTS event_history (
   timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Создание таблицы RSVP
+-- Создание таблицы RSVP (для повторяющихся событий — отдельно на каждое вхождение)
 CREATE TABLE IF NOT EXISTS rsvps (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id UUID REFERENCES events(id) ON DELETE CASCADE,
+  occurrence_date TIMESTAMP WITH TIME ZONE NOT NULL,
   user_id UUID REFERENCES users(id),
   user_name TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'going',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(event_id, user_id)
+  UNIQUE(event_id, user_id, occurrence_date)
 );
 
 -- Создание индексов для производительности
@@ -87,6 +88,7 @@ CREATE INDEX IF NOT EXISTS idx_events_creator ON events(creator_id);
 CREATE INDEX IF NOT EXISTS idx_comments_event ON event_comments(event_id);
 CREATE INDEX IF NOT EXISTS idx_history_event ON event_history(event_id);
 CREATE INDEX IF NOT EXISTS idx_rsvps_event ON rsvps(event_id);
+CREATE INDEX IF NOT EXISTS idx_rsvps_event_occurrence ON rsvps(event_id, occurrence_date);
 ```
 
 4. Настройте Row Level Security (RLS):

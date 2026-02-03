@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useMemo } from 'react';
 import Navbar from './components/Navbar';
 import CalendarView from './components/CalendarView';
 import LoginPage from './pages/LoginPage';
@@ -15,6 +15,7 @@ import { useFilters } from './hooks/useFilters';
 import { useEventHandlers } from './hooks/useEventHandlers';
 import BottomNavigation from './components/BottomNavigation';
 import { useMedia } from './hooks/useMedia';
+import { expandRecurringEvents } from './utils/recurrence';
 
 const EventModal = lazy(() => import('./components/EventModal'));
 const ExportModal = lazy(() => import('./components/ExportModal'));
@@ -68,6 +69,16 @@ const AppContent: React.FC = () => {
     showToast
   );
 
+  // Expanded upcoming events for NotificationCenter (per-occurrence RSVP)
+  const upcomingExpandedEvents = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setDate(end.getDate() + 30);
+    end.setHours(23, 59, 59, 999);
+    return expandRecurringEvents(filteredEvents, start, end, recurrenceExceptions);
+  }, [filteredEvents, recurrenceExceptions]);
+
   if (isSessionLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -88,7 +99,7 @@ const AppContent: React.FC = () => {
         onAddEventClick={handleCreateClick}
         onExportClick={handleExportClick}
         onRefresh={() => refreshEvents(true)}
-        events={events}
+        events={upcomingExpandedEvents}
         userRsvpEventIds={userRsvpEventIds}
       />
 

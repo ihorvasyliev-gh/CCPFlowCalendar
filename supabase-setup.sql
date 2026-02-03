@@ -86,16 +86,17 @@ CREATE TABLE IF NOT EXISTS public.event_history (
   timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Таблица RSVP (записи на события)
+-- Таблица RSVP (записи на события; для повторяющихся — отдельно на каждое вхождение)
 CREATE TABLE IF NOT EXISTS public.rsvps (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   event_id UUID NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
+  occurrence_date TIMESTAMP WITH TIME ZONE NOT NULL,
   user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   user_name TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'going' CHECK (status IN ('going', 'maybe', 'not_going')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(event_id, user_id)
+  UNIQUE(event_id, user_id, occurrence_date)
 );
 
 -- Таблица категорий событий
@@ -132,6 +133,7 @@ CREATE INDEX IF NOT EXISTS idx_history_timestamp ON public.event_history(timesta
 
 -- Индексы для таблицы rsvps
 CREATE INDEX IF NOT EXISTS idx_rsvps_event ON public.rsvps(event_id);
+CREATE INDEX IF NOT EXISTS idx_rsvps_event_occurrence ON public.rsvps(event_id, occurrence_date);
 CREATE INDEX IF NOT EXISTS idx_rsvps_user ON public.rsvps(user_id);
 CREATE INDEX IF NOT EXISTS idx_rsvps_status ON public.rsvps(status);
 

@@ -1,16 +1,32 @@
 import { supabase } from '../lib/supabase';
 
-// Subscribe to RSVP changes for real-time updates (optional, handled by optimistic UI for now)
+/** Normalize occurrence date to start of day in UTC for consistent matching (optional). We store exact timestamp. */
+function toISODate(d: Date): string {
+  return d.toISOString();
+}
 
-export const rsvpToEvent = async (eventId: string, userId: string, userName: string): Promise<void> => {
+/**
+ * RSVP to a specific occurrence of an event.
+ * For recurring events, occurrenceDate is the instance date; for single events use the event's date.
+ */
+export const rsvpToEvent = async (
+  eventId: string,
+  userId: string,
+  userName: string,
+  occurrenceDate: Date
+): Promise<void> => {
   const { error } = await supabase
     .from('rsvps')
-    .upsert({
-      event_id: eventId,
-      user_id: userId,
-      user_name: userName,
-      status: 'going'
-    }, { onConflict: 'event_id,user_id' });
+    .upsert(
+      {
+        event_id: eventId,
+        occurrence_date: toISODate(occurrenceDate),
+        user_id: userId,
+        user_name: userName,
+        status: 'going'
+      },
+      { onConflict: 'event_id,user_id,occurrence_date' }
+    );
 
   if (error) {
     console.error('Error RSVPing to event:', error);
@@ -18,12 +34,17 @@ export const rsvpToEvent = async (eventId: string, userId: string, userName: str
   }
 };
 
-export const cancelRsvp = async (eventId: string, userId: string): Promise<void> => {
+export const cancelRsvp = async (
+  eventId: string,
+  userId: string,
+  occurrenceDate: Date
+): Promise<void> => {
   const { error } = await supabase
     .from('rsvps')
     .delete()
     .eq('event_id', eventId)
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .eq('occurrence_date', toISODate(occurrenceDate));
 
   if (error) {
     console.error('Error cancelling RSVP:', error);
@@ -31,11 +52,16 @@ export const cancelRsvp = async (eventId: string, userId: string): Promise<void>
   }
 };
 
-export const getEventAttendees = async (eventId: string): Promise<string[]> => {
+/** Get attendee user IDs for a specific occurrence. */
+export const getEventAttendees = async (
+  eventId: string,
+  occurrenceDate: Date
+): Promise<string[]> => {
   const { data, error } = await supabase
     .from('rsvps')
     .select('user_id')
     .eq('event_id', eventId)
+    .eq('occurrence_date', toISODate(occurrenceDate))
     .eq('status', 'going');
 
   if (error) {
@@ -43,17 +69,22 @@ export const getEventAttendees = async (eventId: string): Promise<string[]> => {
     return [];
   }
 
-  return data.map(r => r.user_id);
+  return (data || []).map((r: { user_id: string }) => r.user_id);
 };
 
-export const hasUserRsvped = async (eventId: string, userId: string): Promise<boolean> => {
+export const hasUserRsvped = async (
+  eventId: string,
+  userId: string,
+  occurrenceDate: Date
+): Promise<boolean> => {
   const { data, error } = await supabase
     .from('rsvps')
     .select('status')
     .eq('event_id', eventId)
     .eq('user_id', userId)
+    .eq('occurrence_date', toISODate(occurrenceDate))
     .eq('status', 'going')
-    .maybeSingle(); // Use maybeSingle to avoid error if not found
+    .maybeSingle();
 
   if (error) {
     console.error('Error checking RSVP status:', error);
@@ -63,10 +94,14 @@ export const hasUserRsvped = async (eventId: string, userId: string): Promise<bo
   return !!data;
 };
 
+/**
+ * Returns instance keys for occurrences the user has RSVP'd to.
+ * Instance key format: `${event_id}_${occurrence_date.getTime()}` (matches recurrence.ts).
+ */
 export const getUserRsvps = async (userId: string): Promise<string[]> => {
   const { data, error } = await supabase
     .from('rsvps')
-    .select('event_id')
+    .select('event_id, occurrence_date')
     .eq('user_id', userId)
     .eq('status', 'going');
 
@@ -75,6 +110,8 @@ export const getUserRsvps = async (userId: string): Promise<string[]> => {
     return [];
   }
 
-  return data.map(r => r.event_id);
+  return (data || []).map(
+    (r: { event_id: string; occurrence_date: string }) =>
+      `${r.event_id}_${new Date(r.occurrence_date).getTime()}`
+  );
 };
-
