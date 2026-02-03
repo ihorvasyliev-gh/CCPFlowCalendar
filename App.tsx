@@ -14,7 +14,7 @@ import { logout as logoutService, getCurrentUser, getUsersByIds } from './servic
 import { supabase } from './lib/supabase';
 import { filterEvents } from './utils/filterEvents';
 import { getCachedUser, cacheUser, clearUserCache, hasValidSession } from './utils/sessionCache';
-import { getCachedEvents, cacheEvents, clearEventsCache } from './utils/eventsCache';
+import { getCachedEvents, cacheEvents, clearEventsCache, getCachedExceptions, cacheExceptions } from './utils/eventsCache';
 import { clearRecurrenceCache } from './utils/recurrence';
 import BottomNavigation from './components/BottomNavigation';
 import { useMedia } from './hooks/useMedia';
@@ -151,9 +151,12 @@ const AppContent: React.FC = () => {
     if (cached && cached.length > 0) {
       setEvents(cached);
       setLoadingEvents(false);
-      // Wait for session check to complete before showing UI if we have data? 
-      // Actually if we have cache, we can show it, but user might be null initially.
-      // Whatever, wait for session check is safer.
+
+      // Load cached exceptions immediately
+      const cachedExceptions = getCachedExceptions();
+      if (cachedExceptions) {
+        setRecurrenceExceptions(cachedExceptions);
+      }
     } else {
       setLoadingEvents(true);
     }
@@ -185,6 +188,7 @@ const AppContent: React.FC = () => {
             })
           );
           setRecurrenceExceptions(exceptionsMap);
+          cacheExceptions(exceptionsMap);
         }
       } catch (error) {
         console.error('Error loading events:', error);
@@ -247,6 +251,7 @@ const AppContent: React.FC = () => {
                 })
               );
               setRecurrenceExceptions(exceptionsMap);
+              cacheExceptions(exceptionsMap);
             }
           } catch (error) {
             console.error('Background sync error:', error);
@@ -441,6 +446,7 @@ const AppContent: React.FC = () => {
       })) {
         next.set(eventId, [...exceptions, normalizedDate]);
       }
+      cacheExceptions(next);
       return next;
     });
 
@@ -465,6 +471,7 @@ const AppContent: React.FC = () => {
           return dNormalized.getTime() !== normalizedDate.getTime();
         });
         next.set(eventId, nextExceptions);
+        cacheExceptions(next);
         return next;
       });
     }
@@ -504,9 +511,10 @@ const AppContent: React.FC = () => {
 
       // Reload exceptions if it was a recurring event
       if (eventToDelete.recurrence && eventToDelete.recurrence.type !== 'none') {
-        setRecurrenceExceptions((prev) => {
-          const next = new Map(prev);
+        setRecurrenceExceptions((prev: Map<string, Date[]>) => {
+          const next = new Map<string, Date[]>(prev);
           next.delete(id);
+          cacheExceptions(next);
           return next;
         });
       }

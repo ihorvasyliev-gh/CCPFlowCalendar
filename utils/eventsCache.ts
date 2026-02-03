@@ -20,9 +20,9 @@ function serialize(events: Event[]): string {
     history: e.history?.map((h) => ({ ...h, timestamp: (h.timestamp as Date).toISOString() })),
     recurrence: e.recurrence
       ? {
-          ...e.recurrence,
-          endDate: e.recurrence.endDate ? (e.recurrence.endDate as Date).toISOString() : undefined
-        }
+        ...e.recurrence,
+        endDate: e.recurrence.endDate ? (e.recurrence.endDate as Date).toISOString() : undefined
+      }
       : undefined
   }));
   return JSON.stringify(raw);
@@ -40,9 +40,9 @@ function deserialize(json: string): Event[] {
     history: e.history?.map((h: any) => ({ ...h, timestamp: new Date(h.timestamp) })),
     recurrence: e.recurrence
       ? {
-          ...e.recurrence,
-          endDate: e.recurrence.endDate ? new Date(e.recurrence.endDate) : undefined
-        }
+        ...e.recurrence,
+        endDate: e.recurrence.endDate ? new Date(e.recurrence.endDate) : undefined
+      }
       : undefined
   }));
 }
@@ -80,7 +80,49 @@ export function clearEventsCache(): void {
   try {
     localStorage.removeItem(EVENTS_CACHE_KEY);
     localStorage.removeItem(EVENTS_CACHE_TIMESTAMP_KEY);
+    localStorage.removeItem(EXCEPTIONS_CACHE_KEY);
   } catch (err) {
     console.warn('Failed to clear events cache:', err);
+  }
+}
+
+// --- Exceptions Cache ---
+
+const EXCEPTIONS_CACHE_KEY = 'ccp_exceptions_cache';
+
+/** Serialize Map<string, Date[]> to JSON */
+function serializeExceptions(map: Map<string, Date[]>): string {
+  const obj: Record<string, string[]> = {};
+  for (const [key, dates] of map.entries()) {
+    obj[key] = dates.map(d => d.toISOString());
+  }
+  return JSON.stringify(obj);
+}
+
+/** Deserialize JSON to Map<string, Date[]> */
+function deserializeExceptions(json: string): Map<string, Date[]> {
+  const obj = JSON.parse(json) as Record<string, string[]>;
+  const map = new Map<string, Date[]>();
+  for (const [key, dateStrings] of Object.entries(obj)) {
+    map.set(key, dateStrings.map(d => new Date(d)));
+  }
+  return map;
+}
+
+export function cacheExceptions(exceptions: Map<string, Date[]>): void {
+  try {
+    localStorage.setItem(EXCEPTIONS_CACHE_KEY, serializeExceptions(exceptions));
+  } catch (err) {
+    console.warn('Failed to cache exceptions:', err);
+  }
+}
+
+export function getCachedExceptions(): Map<string, Date[]> | null {
+  try {
+    const json = localStorage.getItem(EXCEPTIONS_CACHE_KEY);
+    if (!json) return null;
+    return deserializeExceptions(json);
+  } catch {
+    return null;
   }
 }
