@@ -48,14 +48,14 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, events }) =>
       const twoYearsMs = EXPORT_RANGE_YEARS * 365.25 * 24 * 60 * 60 * 1000;
       const rangeEnd = eventsWithRelated.length > 0
         ? new Date(Math.max(...eventsWithRelated.map(e => {
-            const end = e.recurrence?.endDate;
-            if (end) return end.getTime();
-            return e.date.getTime() + twoYearsMs;
-          })))
+          const end = e.recurrence?.endDate;
+          if (end) return end.getTime();
+          return e.date.getTime() + twoYearsMs;
+        })))
         : new Date(rangeStart.getTime() + twoYearsMs);
 
       const expanded = expandRecurringEvents(eventsWithRelated, rangeStart, rangeEnd, exceptionsMap);
-      const blob = exportToExcel(expanded);
+      const blob = await exportToExcel(expanded);
       downloadBlob(blob, 'ccp-events.xlsx');
       onClose();
     } catch (err) {

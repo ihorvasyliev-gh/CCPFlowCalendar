@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { Event } from '../types';
 
 // Export to iCal format
@@ -80,21 +80,34 @@ const RECURRENCE_LABELS: Record<string, string> = {
 };
 
 /** Export events to Excel (.xlsx) with description, comments, attachments. */
-export const exportToExcel = (events: Event[]): Blob => {
-  const headers = [
-    'Title',
-    'Date',
-    'Time',
-    'Location',
-    'Description',
-    'Category',
-    'Status',
-    'Recurrence',
-    'Comments',
-    'Attachments'
+export const exportToExcel = async (events: Event[]): Promise<Blob> => {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Events');
+
+  // Define columns
+  worksheet.columns = [
+    { header: 'Title', key: 'title', width: 30 },
+    { header: 'Date', key: 'date', width: 15 },
+    { header: 'Time', key: 'time', width: 15 },
+    { header: 'Location', key: 'location', width: 30 },
+    { header: 'Description', key: 'description', width: 50 },
+    { header: 'Category', key: 'category', width: 20 },
+    { header: 'Status', key: 'status', width: 15 },
+    { header: 'Recurrence', key: 'recurrence', width: 20 },
+    { header: 'Comments', key: 'comments', width: 50 },
+    { header: 'Attachments', key: 'attachments', width: 50 }
   ];
 
-  const rows = events.map(event => {
+  // Style the header row
+  const headerRow = worksheet.getRow(1);
+  headerRow.font = { bold: true };
+  headerRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFD3D3D3' } // Light gray
+  };
+
+  events.forEach(event => {
     const date = event.date instanceof Date ? event.date : new Date(event.date);
     const recurrenceLabel = event.recurrence?.type
       ? RECURRENCE_LABELS[event.recurrence.type] || event.recurrence.type
@@ -109,24 +122,21 @@ export const exportToExcel = (events: Event[]): Blob => {
       .map(a => `${a.name}: ${a.url}`)
       .join('\n');
 
-    return [
-      event.title,
-      date.toLocaleDateString(),
-      date.toLocaleTimeString(),
-      event.location,
-      event.description || '',
-      event.category || '',
-      event.status || 'published',
-      recurrenceLabel,
-      commentsText,
-      attachmentsText
-    ];
+    worksheet.addRow({
+      title: event.title,
+      date: date.toLocaleDateString(),
+      time: date.toLocaleTimeString(),
+      location: event.location,
+      description: event.description || '',
+      category: event.category || '',
+      status: event.status || 'published',
+      recurrence: recurrenceLabel,
+      comments: commentsText,
+      attachments: attachmentsText
+    });
   });
 
-  const data = [headers, ...rows];
-  const ws = XLSX.utils.aoa_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Events');
-  const wbout = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
-  return new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  // Write to buffer
+  const buffer = await workbook.xlsx.writeBuffer();
+  return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 };
