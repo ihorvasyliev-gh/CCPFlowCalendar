@@ -9,6 +9,7 @@ import EventComments from './EventComments';
 import EventHistory from './EventHistory';
 import { validateEvent } from '../utils/validation';
 import { useTheme } from '../contexts/ThemeContext';
+import { useModalFocusTrap } from '../hooks/useModalFocusTrap';
 import LazyImage from './LazyImage';
 
 interface EventModalProps {
@@ -68,8 +69,20 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
   const [recurrenceInterval, setRecurrenceInterval] = useState<number>(1);
   const [recurrenceEndDate, setRecurrenceEndDate] = useState<string>('');
 
+  // Inline validation errors (field id -> message)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const clearFieldError = (field: string) => {
+    setFieldErrors(prev => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const modalPanelRef = useRef<HTMLDivElement>(null);
+  useModalFocusTrap(isOpen, onClose, modalPanelRef);
 
   // Determine if we are creating a new event from scratch
   const isCreating = !event;
@@ -140,6 +153,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
         }
 
         setIsEditing(false); // Reset to view mode initially
+        setFieldErrors({});
 
         // LAZY LOAD: If details are missing, fetch them in background (no loading state)
         // Note: optimistic update in App.tsx might add attendees, so check other fields too
@@ -206,6 +220,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
         setRecurrenceType('none');
         setRecurrenceInterval(1);
         setRecurrenceEndDate('');
+        setFieldErrors({});
       }
     }
   }, [isOpen, event, initialDate, currentUserId]);
@@ -280,10 +295,13 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
 
     const validationErrors = validateEvent(eventData);
     if (validationErrors.length > 0) {
-      alert(validationErrors.map(e => `${e.field}: ${e.message}`).join('\n'));
+      const byField: Record<string, string> = {};
+      validationErrors.forEach(e => { byField[e.field] = e.message; });
+      setFieldErrors(byField);
       setIsSubmitting(false);
       return;
     }
+    setFieldErrors({});
 
     setIsSubmitting(true);
     try {
@@ -572,7 +590,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
         {/* Modal Panel - Full Screen on Mobile */}
-        <div className={`relative flex flex-col rounded-none sm:rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-2xl w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] border-t sm:border border-white/20 animate-scale-in ${theme === 'dark' ? 'glass-panel-dark' : 'bg-white'}`}>
+        <div ref={modalPanelRef} className={`relative flex flex-col rounded-none sm:rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-2xl w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] border-t sm:border border-white/20 animate-scale-in ${theme === 'dark' ? 'glass-panel-dark' : 'bg-white'}`}>
 
           {/* Header */}
           <div className="px-4 sm:px-6 py-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-800 shrink-0 z-10 bg-white dark:bg-slate-900">
@@ -787,15 +805,22 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
             ) : (
               // FORM MODE
               <form id="event-form" onSubmit={handleSubmit} className="space-y-5">
+                {Object.keys(fieldErrors).length > 0 && (
+                  <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+                    Please fix the errors below.
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Event Title</label>
-                  <input required type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2.5 sm:py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-medium placeholder-slate-400 min-h-[44px] sm:min-h-0" placeholder="e.g. Summer Strategy Meeting" />
+                  <input required type="text" value={title} onChange={(e) => { setTitle(e.target.value); clearFieldError('title'); }} className={`block w-full rounded-lg bg-white dark:bg-slate-800 dark:text-white px-3 py-2.5 sm:py-2 text-sm focus:ring-2 focus:ring-brand-500/20 transition-all font-medium placeholder-slate-400 min-h-[44px] sm:min-h-0 ${fieldErrors.title ? 'border-2 border-red-500 dark:border-red-500' : 'border-slate-200 dark:border-slate-700 focus:border-brand-500'}`} placeholder="e.g. Summer Strategy Meeting" />
+                  {fieldErrors.title && <p className="text-red-500 dark:text-red-400 text-xs mt-1" role="alert">{fieldErrors.title}</p>}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Date</label>
-                    <input required type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2.5 sm:py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all min-h-[44px] sm:min-h-0" />
+                    <input required type="date" value={dateStr} onChange={(e) => { setDateStr(e.target.value); clearFieldError('date'); }} className={`block w-full rounded-lg bg-white dark:bg-slate-800 dark:text-white px-3 py-2.5 sm:py-2 text-sm focus:ring-2 focus:ring-brand-500/20 transition-all min-h-[44px] sm:min-h-0 ${fieldErrors.date ? 'border-2 border-red-500 dark:border-red-500' : 'border-slate-200 dark:border-slate-700 focus:border-brand-500'}`} />
+                    {fieldErrors.date && <p className="text-red-500 dark:text-red-400 text-xs mt-1" role="alert">{fieldErrors.date}</p>}
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Time</label>
@@ -807,8 +832,9 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Location</label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-3 sm:top-2.5 h-4 w-4 text-slate-400" />
-                    <input required type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="block w-full pl-9 rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2.5 sm:py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all min-h-[44px] sm:min-h-0" placeholder="Conference Room A" />
+                    <input required type="text" value={location} onChange={(e) => { setLocation(e.target.value); clearFieldError('location'); }} className={`block w-full pl-9 rounded-lg bg-white dark:bg-slate-800 dark:text-white px-3 py-2.5 sm:py-2 text-sm focus:ring-2 focus:ring-brand-500/20 transition-all min-h-[44px] sm:min-h-0 ${fieldErrors.location ? 'border-2 border-red-500 dark:border-red-500' : 'border-slate-200 dark:border-slate-700 focus:border-brand-500'}`} placeholder="Conference Room A" />
                   </div>
+                  {fieldErrors.location && <p className="text-red-500 dark:text-red-400 text-xs mt-1" role="alert">{fieldErrors.location}</p>}
                 </div>
 
                 <div className={`grid gap-4 ${role === UserRole.ADMIN ? 'grid-cols-1 sm:grid-cols-[1fr_auto_1fr]' : 'grid-cols-1 sm:grid-cols-[1fr_auto]'}`}>
@@ -848,7 +874,8 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
 
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Description</label>
-                  <textarea required value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-3 py-2.5 sm:py-2 text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all resize-none min-h-[100px]" placeholder="Enter event details..." />
+                  <textarea required value={description} onChange={(e) => { setDescription(e.target.value); clearFieldError('description'); }} rows={4} className={`block w-full rounded-lg bg-white dark:bg-slate-800 dark:text-white px-3 py-2.5 sm:py-2 text-sm focus:ring-2 focus:ring-brand-500/20 transition-all resize-none min-h-[100px] ${fieldErrors.description ? 'border-2 border-red-500 dark:border-red-500' : 'border-slate-200 dark:border-slate-700 focus:border-brand-500'}`} placeholder="Enter event details..." />
+                  {fieldErrors.description && <p className="text-red-500 dark:text-red-400 text-xs mt-1" role="alert">{fieldErrors.description}</p>}
                 </div>
 
                 {/* File Uploads Section simplified */}

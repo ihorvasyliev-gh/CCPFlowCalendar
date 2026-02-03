@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, UserRole } from '../types';
+import { User, UserRole, Event } from '../types';
 import { LogOut, Calendar, PlusCircle, Download, Moon, Sun, Menu, X } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 import { useTheme } from '../contexts/ThemeContext';
@@ -10,7 +10,7 @@ interface NavbarProps {
   onAddEventClick: () => void;
   onExportClick?: () => void;
   onRefresh?: () => void;
-  events?: any[]; // Using any[] to avoid circular dependency issues if types are mixed, but ideally Event[]
+  events?: Event[];
   userRsvpEventIds?: Set<string>;
 }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, X, Check, Trash2, Calendar, Users, AlertCircle } from 'lucide-react';
-import { Notification, getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, subscribeToNotifications } from '../services/notificationService';
+import { Notification, getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from '../services/notificationService';
 import { Event } from '../types';
 
 interface NotificationCenterProps {

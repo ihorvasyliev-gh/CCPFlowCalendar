@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { X, Download, Calendar, FileSpreadsheet } from 'lucide-react';
 import { Event } from '../types';
 import { exportToICal, exportToExcel, downloadFile, downloadBlob } from '../utils/export';
 import { getEventsWithRelated, getRecurrenceExceptions } from '../services/eventService';
 import { expandRecurringEvents } from '../utils/recurrence';
+import { useModalFocusTrap } from '../hooks/useModalFocusTrap';
 
 const EXPORT_RANGE_YEARS = 2;
 
@@ -16,6 +17,8 @@ interface ExportModalProps {
 const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, events }) => {
   const [exportFormat, setExportFormat] = useState<'ical' | 'excel'>('ical');
   const [exporting, setExporting] = useState(false);
+  const modalPanelRef = useRef<HTMLDivElement>(null);
+  useModalFocusTrap(isOpen, onClose, modalPanelRef);
 
   if (!isOpen) return null;
 
@@ -71,7 +74,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, events }) =>
         <div className="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={onClose}></div>
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-        <div className="inline-block align-bottom bg-white dark:bg-slate-800 rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md w-full">
+        <div ref={modalPanelRef} className="inline-block align-bottom bg-white dark:bg-slate-800 rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md w-full">
           <div className="bg-slate-50 dark:bg-slate-700/50 px-4 py-3 sm:px-6 flex justify-between items-center border-b border-gray-100 dark:border-gray-700">
             <h3 className="text-lg leading-6 font-semibold text-gray-900 dark:text-white" id="export-modal-title">
               Export Events
