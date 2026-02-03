@@ -76,11 +76,14 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
   // Show form if we are creating OR editing
   const showForm = isCreating || isEditing;
 
+  const hasInteractedWithRsvp = useRef(false);
+
   // Initialize form state when opening or switching modes
   useEffect(() => {
     if (isOpen) {
       if (event) {
         // We have an event (View/Edit mode)
+        hasInteractedWithRsvp.current = false;
         setTitle(event.title);
         setDescription(event.description);
         setLocation(event.location);
@@ -142,7 +145,10 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
             if (details.attendees) {
               setAttendees(details.attendees);
               // Re-check RSVP status with fresh attendees list
-              setUserHasRsvped(details.attendees.includes(currentUserId));
+              // ONLY update if user hasn't interacted yet to avoid overwriting optimistic updates
+              if (!hasInteractedWithRsvp.current) {
+                setUserHasRsvped(details.attendees.includes(currentUserId));
+              }
             }
           }).catch(err => {
             if (isActive) console.error("Failed to load event details", err);
@@ -320,6 +326,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
 
   const handleRsvp = async () => {
     if (!event) return;
+    hasInteractedWithRsvp.current = true;
 
     // Optimistic update: update UI immediately
     const wasRsvped = userHasRsvped;
