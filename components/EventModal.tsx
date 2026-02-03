@@ -77,13 +77,20 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
   const showForm = isCreating || isEditing;
 
   const hasInteractedWithRsvp = useRef(false);
+  const prevEventId = useRef<string | null>(null);
 
   // Initialize form state when opening or switching modes
   useEffect(() => {
     if (isOpen) {
       if (event) {
         // We have an event (View/Edit mode)
-        hasInteractedWithRsvp.current = false;
+
+        // Only reset interaction flag if we are viewing a different event
+        if (event.id !== prevEventId.current) {
+          hasInteractedWithRsvp.current = false;
+          prevEventId.current = event.id;
+        }
+
         setTitle(event.title);
         setDescription(event.description);
         setLocation(event.location);
@@ -99,7 +106,13 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
         setComments(event.comments || []);
         setHistory(event.history || []);
         setAttendees(event.attendees || []);
-        setUserHasRsvped(event.attendees?.includes(currentUserId) || false);
+
+        // Only update local RSVP state from props if user hasn't interacted recently
+        // This ensures the optimistic update loop (Modal -> App -> Modal) doesn't reset state weirdly
+        // effectively, checks "if we haven't touched the button, trust the prop"
+        if (!hasInteractedWithRsvp.current) {
+          setUserHasRsvped(event.attendees?.includes(currentUserId) || false);
+        }
 
         // Format Date for Input (YYYY-MM-DD)
         const yyyy = event.date.getFullYear();
@@ -129,6 +142,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
         setIsEditing(false); // Reset to view mode initially
 
         // LAZY LOAD: If details are missing, fetch them in background (no loading state)
+        // Note: optimistic update in App.tsx might add attendees, so check other fields too
         const needsLoading = !event.comments || !event.history || !event.attachments || !event.attendees;
 
         // Ref to track if the effect is still valid
