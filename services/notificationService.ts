@@ -1,4 +1,6 @@
 import { Event } from '../types';
+import { supabase } from '../lib/supabase';
+
 
 export type NotificationType = 'event_reminder' | 'event_created' | 'event_updated' | 'event_cancelled' | 'rsvp_update';
 
@@ -125,4 +127,55 @@ export const scheduleEventReminder = (event: Event, reminderMinutes: number): vo
       });
     }, delay);
   }
+};
+
+export const checkTomorrowRSVPEvents = async (userId: string): Promise<void> => {
+  // 1. Get user's RSVPs
+  const { data: rsvps } = await supabase
+    .from('rsvps')
+    .select('event_id')
+    .eq('user_id', userId)
+    .eq('status', 'going');
+
+  if (!rsvps || rsvps.length === 0) return;
+
+  const eventIds = rsvps.map(r => r.event_id);
+  if (eventIds.length === 0) return;
+
+  // 2. Get events for tomorrow
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  const dayAfterTomorrow = new Date(tomorrow);
+  dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
+
+  const { data: events } = await supabase
+    .from('events')
+    .select('*')
+    .in('id', eventIds)
+    .gte('date', tomorrow.toISOString())
+    .lt('date', dayAfterTomorrow.toISOString());
+
+  if (!events || events.length === 0) return;
+
+  // 3. Notify
+  // Check permission first
+  const permission = await requestNotificationPermission();
+  if (!permission) return;
+
+  // Check if we already notified today (simple localStorage check to avoid spam on refresh)
+  const notifiedKey = `notified_events_${new Date().toDateString()}`;
+  const notifiedEvents = JSON.parse(localStorage.getItem(notifiedKey) || '[]');
+
+  for (const event of events) {
+    if (!notifiedEvents.includes(event.id)) {
+      showBrowserNotification(`Upcoming Event: ${event.title}`, {
+        body: `You have an event tomorrow at ${new Date(event.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}: ${event.location || 'No location'}`,
+        icon: event.poster_url || '/favicon.ico'
+      });
+      notifiedEvents.push(event.id);
+    }
+  }
+
+  localStorage.setItem(notifiedKey, JSON.stringify(notifiedEvents));
 };

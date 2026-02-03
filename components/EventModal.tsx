@@ -96,7 +96,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
         setComments(event.comments || []);
         setHistory(event.history || []);
         setAttendees(event.attendees || []);
-        setUserHasRsvped(hasUserRsvped(event.id, currentUserId));
+        setUserHasRsvped(event.attendees?.includes(currentUserId) || false);
 
         // Format Date for Input (YYYY-MM-DD)
         const yyyy = event.date.getFullYear();
@@ -349,7 +349,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
       if (wasRsvped) {
         await cancelRsvp(event.id, currentUserId);
       } else {
-        await rsvpToEvent(event.id, currentUserId);
+        await rsvpToEvent(event.id, currentUserId, currentUserName);
       }
     } catch (err) {
       console.error('Failed to sync RSVP with server:', err);

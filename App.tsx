@@ -11,6 +11,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { User, Event, EventFilters, UserRole } from './types';
 import { getEvents, createEvent, updateEvent, deleteEvent, deleteRecurrenceInstance, getRecurrenceExceptions } from './services/eventService';
 import { logout as logoutService, getCurrentUser, getUsersByIds } from './services/authService';
+import { checkTomorrowRSVPEvents } from './services/notificationService';
 import { supabase } from './lib/supabase';
 import { filterEvents } from './utils/filterEvents';
 import { getCachedUser, cacheUser, clearUserCache, hasValidSession } from './utils/sessionCache';
@@ -143,9 +144,14 @@ const AppContent: React.FC = () => {
     };
   }, []);
 
+
+
   // Initial Load of Events: показываем кэш сразу, затем обновляем в фоне
   useEffect(() => {
     if (!user) return;
+
+    // Check for tomorrow's events and notify
+    checkTomorrowRSVPEvents(user.id).catch(console.error);
 
     const cached = getCachedEvents();
     if (cached && cached.length > 0) {

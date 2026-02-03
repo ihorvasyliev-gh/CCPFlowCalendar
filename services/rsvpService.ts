@@ -1,58 +1,65 @@
-import { Event } from '../types';
+import { supabase } from '../lib/supabase';
 
-// Mock RSVP data stored per event
-const MOCK_RSVPS: Record<string, string[]> = {};
+// Subscribe to RSVP changes for real-time updates (optional, handled by optimistic UI for now)
 
-export const rsvpToEvent = async (eventId: string, userId: string): Promise<Event> => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (!MOCK_RSVPS[eventId]) {
-        MOCK_RSVPS[eventId] = [];
-      }
-      
-      if (MOCK_RSVPS[eventId].includes(userId)) {
-        reject(new Error('Already RSVPed to this event'));
-        return;
-      }
+export const rsvpToEvent = async (eventId: string, userId: string, userName: string): Promise<void> => {
+  const { error } = await supabase
+    .from('rsvps')
+    .upsert({
+      event_id: eventId,
+      user_id: userId,
+      user_name: userName,
+      status: 'going'
+    }, { onConflict: 'event_id,user_id' });
 
-      MOCK_RSVPS[eventId].push(userId);
-      
-      // In a real app, we'd fetch the updated event from the backend
-      // For now, we'll just return a mock updated event
-      const updatedEvent = {
-        id: eventId,
-        attendees: MOCK_RSVPS[eventId]
-      } as Event;
-      
-      resolve(updatedEvent);
-    }, 500);
-  });
+  if (error) {
+    console.error('Error RSVPing to event:', error);
+    throw new Error(error.message || 'Failed to RSVP');
+  }
 };
 
-export const cancelRsvp = async (eventId: string, userId: string): Promise<Event> => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (!MOCK_RSVPS[eventId] || !MOCK_RSVPS[eventId].includes(userId)) {
-        reject(new Error('Not RSVPed to this event'));
-        return;
-      }
+export const cancelRsvp = async (eventId: string, userId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('rsvps')
+    .delete()
+    .eq('event_id', eventId)
+    .eq('user_id', userId);
 
-      MOCK_RSVPS[eventId] = MOCK_RSVPS[eventId].filter(id => id !== userId);
-      
-      const updatedEvent = {
-        id: eventId,
-        attendees: MOCK_RSVPS[eventId]
-      } as Event;
-      
-      resolve(updatedEvent);
-    }, 500);
-  });
+  if (error) {
+    console.error('Error cancelling RSVP:', error);
+    throw new Error(error.message || 'Failed to cancel RSVP');
+  }
 };
 
-export const getEventAttendees = (eventId: string): string[] => {
-  return MOCK_RSVPS[eventId] || [];
+export const getEventAttendees = async (eventId: string): Promise<string[]> => {
+  const { data, error } = await supabase
+    .from('rsvps')
+    .select('user_id')
+    .eq('event_id', eventId)
+    .eq('status', 'going');
+
+  if (error) {
+    console.error('Error fetching attendees:', error);
+    return [];
+  }
+
+  return data.map(r => r.user_id);
 };
 
-export const hasUserRsvped = (eventId: string, userId: string): boolean => {
-  return MOCK_RSVPS[eventId]?.includes(userId) || false;
+export const hasUserRsvped = async (eventId: string, userId: string): Promise<boolean> => {
+  const { data, error } = await supabase
+    .from('rsvps')
+    .select('status')
+    .eq('event_id', eventId)
+    .eq('user_id', userId)
+    .eq('status', 'going')
+    .maybeSingle(); // Use maybeSingle to avoid error if not found
+
+  if (error) {
+    console.error('Error checking RSVP status:', error);
+    return false;
+  }
+
+  return !!data;
 };
+
