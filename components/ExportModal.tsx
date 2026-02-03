@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
-import { X, Download, Calendar, FileText } from 'lucide-react';
+import { X, Download, Calendar, FileSpreadsheet } from 'lucide-react';
 import { Event } from '../types';
-import { exportToICal, exportToCSV, downloadFile } from '../utils/export';
+import { exportToICal, exportToExcel, downloadFile, downloadBlob } from '../utils/export';
+import { getEventsWithRelated, getRecurrenceExceptions } from '../services/eventService';
+import { expandRecurringEvents } from '../utils/recurrence';
+
+const EXPORT_RANGE_YEARS = 2;
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -10,19 +14,55 @@ interface ExportModalProps {
 }
 
 const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, events }) => {
-  const [exportFormat, setExportFormat] = useState<'ical' | 'csv'>('ical');
+  const [exportFormat, setExportFormat] = useState<'ical' | 'excel'>('ical');
+  const [exporting, setExporting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (exportFormat === 'ical') {
       const icalContent = exportToICal(events);
       downloadFile(icalContent, 'ccp-events.ics', 'text/calendar');
-    } else {
-      const csvContent = exportToCSV(events);
-      downloadFile(csvContent, 'ccp-events.csv', 'text/csv');
+      onClose();
+      return;
     }
-    onClose();
+
+    setExporting(true);
+    try {
+      const eventsWithRelated = await getEventsWithRelated(events);
+      const recurringIds = eventsWithRelated
+        .filter(e => e.recurrence && e.recurrence.type !== 'none')
+        .map(e => e.id);
+      const exceptionsMap = new Map<string, Date[]>();
+      await Promise.all(
+        recurringIds.map(async (eventId) => {
+          const exceptions = await getRecurrenceExceptions(eventId);
+          if (exceptions.length > 0) exceptionsMap.set(eventId, exceptions);
+        })
+      );
+
+      const now = new Date();
+      const rangeStart = eventsWithRelated.length > 0
+        ? new Date(Math.min(...eventsWithRelated.map(e => e.date.getTime())))
+        : new Date(now.getFullYear(), now.getMonth(), 1);
+      const twoYearsMs = EXPORT_RANGE_YEARS * 365.25 * 24 * 60 * 60 * 1000;
+      const rangeEnd = eventsWithRelated.length > 0
+        ? new Date(Math.max(...eventsWithRelated.map(e => {
+            const end = e.recurrence?.endDate;
+            if (end) return end.getTime();
+            return e.date.getTime() + twoYearsMs;
+          })))
+        : new Date(rangeStart.getTime() + twoYearsMs);
+
+      const expanded = expandRecurringEvents(eventsWithRelated, rangeStart, rangeEnd, exceptionsMap);
+      const blob = exportToExcel(expanded);
+      downloadBlob(blob, 'ccp-events.xlsx');
+      onClose();
+    } catch (err) {
+      console.error('Export failed:', err);
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -55,6 +95,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, events }) =>
                   checked={exportFormat === 'ical'}
                   onChange={() => setExportFormat('ical')}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                  disabled={exporting}
                 />
                 <div className="ml-3 flex-1">
                   <div className="flex items-center">
@@ -69,17 +110,18 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, events }) =>
                 <input
                   type="radio"
                   name="format"
-                  value="csv"
-                  checked={exportFormat === 'csv'}
-                  onChange={() => setExportFormat('csv')}
+                  value="excel"
+                  checked={exportFormat === 'excel'}
+                  onChange={() => setExportFormat('excel')}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                  disabled={exporting}
                 />
                 <div className="ml-3 flex-1">
                   <div className="flex items-center">
-                    <FileText className="h-5 w-5 text-green-500 dark:text-green-400 mr-2" />
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">CSV Format (.csv)</span>
+                    <FileSpreadsheet className="h-5 w-5 text-green-500 dark:text-green-400 mr-2" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">Excel (.xlsx)</span>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Open in Excel, Google Sheets, or any spreadsheet app</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">All events including recurring, with comments, description and poster links</p>
                 </div>
               </label>
             </div>
@@ -88,10 +130,19 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, events }) =>
           <div className="bg-gray-50 dark:bg-slate-700/50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
             <button
               onClick={handleExport}
-              className="w-full inline-flex justify-center items-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+              disabled={exporting}
+              className="w-full inline-flex justify-center items-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 sm:ml-3 sm:w-auto sm:text-sm"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Export
+              {exporting ? (
+                <>
+                  <span className="animate-pulse">Preparing export…</span>
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </>
+              )}
             </button>
             <button
               onClick={onClose}

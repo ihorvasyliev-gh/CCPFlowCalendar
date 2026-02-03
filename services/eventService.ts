@@ -252,6 +252,25 @@ export const getEvents = async (): Promise<Event[]> => {
   return events;
 };
 
+/** Load comments, attachments, and poster for a list of events (e.g. for export). */
+export const getEventsWithRelated = async (events: Event[]): Promise<Event[]> => {
+  if (events.length === 0) return [];
+  const eventIds = [...new Set(events.map(e => e.id))];
+  const related = await fetchRelatedBatch(eventIds);
+  return events.map(event => {
+    const attachments = related.attachmentsByEvent[event.id] ?? [];
+    const comments = related.commentsByEvent[event.id] ?? [];
+    const posterAttachment = attachments.find(att => att.type === 'image');
+    const posterUrl = event.posterUrl || posterAttachment?.url || undefined;
+    return {
+      ...event,
+      comments: comments.length > 0 ? comments : undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
+      posterUrl
+    };
+  });
+};
+
 export const createEvent = async (eventData: Omit<Event, 'id' | 'createdAt'>, userId: string, userName: string): Promise<Event> => {
   // Подготавливаем данные для вставки в БД
   const eventInsert = {
