@@ -29,6 +29,7 @@ const AppContent: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
+  const [isSessionLoading, setIsSessionLoading] = useState(true);
 
   const [recurrenceExceptions, setRecurrenceExceptions] = useState<Map<string, Date[]>>(new Map());
   const [creatorNames, setCreatorNames] = useState<Record<string, string>>({});
@@ -104,7 +105,11 @@ const AppContent: React.FC = () => {
 
         if (session && !error) {
           // Сессия есть - загружаем пользователя с сервера
-          fetchUserProfileFromServer(session.user.id);
+          fetchUserProfileFromServer(session.user.id).finally(() => {
+            if (isMounted) setIsSessionLoading(false);
+          });
+        } else {
+          if (isMounted) setIsSessionLoading(false);
         }
       });
     };
@@ -145,6 +150,9 @@ const AppContent: React.FC = () => {
     if (cached && cached.length > 0) {
       setEvents(cached);
       setLoadingEvents(false);
+      // Wait for session check to complete before showing UI if we have data? 
+      // Actually if we have cache, we can show it, but user might be null initially.
+      // Whatever, wait for session check is safer.
     } else {
       setLoadingEvents(true);
     }
@@ -416,15 +424,16 @@ const AppContent: React.FC = () => {
   const handleDeleteInstance = useCallback(async (eventId: string, instanceDate: Date) => {
     if (!user) return;
 
-    // Обновляем исключения
-    setRecurrenceExceptions((prev) => {
+    // Обновляем исключения (Optimistic)
+    const normalizedDate = new Date(instanceDate);
+    normalizedDate.setHours(0, 0, 0, 0);
+
+    setRecurrenceExceptions((prev: Map<string, Date[]>) => {
       const next = new Map(prev);
       const exceptions = next.get(eventId) || [];
-      const normalizedDate = new Date(instanceDate);
-      normalizedDate.setHours(0, 0, 0, 0);
 
       // Добавляем исключение, если его еще нет
-      if (!exceptions.some(d => {
+      if (!exceptions.some((d: Date) => {
         const dNormalized = new Date(d);
         dNormalized.setHours(0, 0, 0, 0);
         return dNormalized.getTime() === normalizedDate.getTime();
@@ -437,7 +446,28 @@ const AppContent: React.FC = () => {
     // Очищаем кэш повторений
     clearRecurrenceCache();
 
-    showToast('Event instance deleted', 'success');
+    // Sync with server
+    try {
+      await deleteRecurrenceInstance(eventId, instanceDate, user.id, user.fullName);
+      showToast('Event instance deleted', 'success');
+    } catch (error) {
+      console.error("Error deleting instance", error);
+      showToast("Failed to delete instance", "error");
+
+      // Rollback (remove the added exception)
+      setRecurrenceExceptions((prev: Map<string, Date[]>) => {
+        const next = new Map(prev);
+        const exceptions = next.get(eventId) || [];
+        const nextExceptions = exceptions.filter(d => {
+          const dNormalized = new Date(d);
+          dNormalized.setHours(0, 0, 0, 0);
+          return dNormalized.getTime() !== normalizedDate.getTime();
+        });
+        next.set(eventId, nextExceptions);
+        return next;
+      });
+    }
+
   }, [user, showToast]);
 
   const handleDeleteEvent = useCallback(async (id: string) => {
@@ -580,6 +610,12 @@ const AppContent: React.FC = () => {
   }, [events, creatorNames]);
 
   // Render Logic - always show content immediately (cache loads instantly)
+  if (isSessionLoading) {
+    return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-slate-900 dark:border-white"></div>
+    </div>;
+  }
+
   if (!user) {
     return <LoginPage onLogin={handleLogin} />;
   }

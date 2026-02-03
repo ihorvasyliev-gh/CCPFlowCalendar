@@ -127,9 +127,15 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
 
         // LAZY LOAD: If details are missing, fetch them in background (no loading state)
         const needsLoading = !event.comments || !event.history || !event.attachments || !event.attendees;
+
+        // Ref to track if the effect is still valid
+        let isActive = true;
+
         if (needsLoading) {
           // Load in background without blocking UI
           fetchEventDetails(event.id).then(details => {
+            if (!isActive) return;
+
             if (details.attachments) setAttachments(details.attachments);
             if (details.comments) setComments(details.comments);
             if (details.history) setHistory(details.history);
@@ -138,8 +144,14 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
               // Re-check RSVP status with fresh attendees list
               setUserHasRsvped(details.attendees.includes(currentUserId));
             }
-          }).catch(err => console.error("Failed to load event details", err));
+          }).catch(err => {
+            if (isActive) console.error("Failed to load event details", err);
+          });
         }
+
+        return () => {
+          isActive = false;
+        };
 
       } else {
         // Create Mode
@@ -509,12 +521,11 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
     try {
       if (deleteAll) {
         // Удаляем всю серию
-        await deleteEvent(event.id, currentUserId, currentUserName);
+        // API call delegated to parent (App.tsx)
         await onDelete(event.id);
       } else {
         // Удаляем только этот экземпляр
-        await deleteRecurrenceInstance(event.id, event.date, currentUserId, currentUserName);
-        // Уведомляем родительский компонент об удалении экземпляра
+        // API call delegated to parent (App.tsx)
         if (onDeleteInstance) {
           await onDeleteInstance(event.id, event.date);
         }
