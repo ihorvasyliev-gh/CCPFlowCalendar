@@ -130,54 +130,51 @@ export const scheduleEventReminder = (event: Event, reminderMinutes: number): vo
 };
 
 export const checkTomorrowRSVPEvents = async (userId: string): Promise<void> => {
-  // Tomorrow range (per-occurrence RSVP)
+  // 1. Get user's RSVPs
+  const { data: rsvps } = await supabase
+    .from('rsvps')
+    .select('event_id')
+    .eq('user_id', userId)
+    .eq('status', 'going');
+
+  if (!rsvps || rsvps.length === 0) return;
+
+  const eventIds = rsvps.map(r => r.event_id);
+  if (eventIds.length === 0) return;
+
+  // 2. Get events for tomorrow
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(0, 0, 0, 0);
   const dayAfterTomorrow = new Date(tomorrow);
   dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
 
-  // 1. Get user's RSVPs for tomorrow (by occurrence_date)
-  const { data: rsvps } = await supabase
-    .from('rsvps')
-    .select('event_id, occurrence_date')
-    .eq('user_id', userId)
-    .eq('status', 'going')
-    .gte('occurrence_date', tomorrow.toISOString())
-    .lt('occurrence_date', dayAfterTomorrow.toISOString());
-
-  if (!rsvps || rsvps.length === 0) return;
-
-  const eventIds = [...new Set(rsvps.map((r: { event_id: string }) => r.event_id))];
-  if (eventIds.length === 0) return;
-
-  // 2. Get event details for titles
   const { data: events } = await supabase
     .from('events')
     .select('*')
-    .in('id', eventIds);
+    .in('id', eventIds)
+    .gte('date', tomorrow.toISOString())
+    .lt('date', dayAfterTomorrow.toISOString());
 
   if (!events || events.length === 0) return;
 
-  const eventsById = new Map(events.map((e: { id: string }) => [e.id, e]));
-
-  // 3. Notify (one per occurrence)
+  // 3. Notify
+  // Check permission first
   const permission = await requestNotificationPermission();
   if (!permission) return;
 
+  // Check if we already notified today (simple localStorage check to avoid spam on refresh)
   const notifiedKey = `notified_events_${new Date().toDateString()}`;
   const notifiedEvents = JSON.parse(localStorage.getItem(notifiedKey) || '[]');
 
-  for (const r of rsvps as { event_id: string; occurrence_date: string }[]) {
-    const event = eventsById.get(r.event_id);
-    if (!event) continue;
-    const occurrenceKey = `${r.event_id}_${new Date(r.occurrence_date).getTime()}`;
-    if (notifiedEvents.includes(occurrenceKey)) continue;
-    showBrowserNotification(`Upcoming Event: ${event.title}`, {
-      body: `You have an event tomorrow at ${new Date(r.occurrence_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}: ${event.location || 'No location'}`,
-      icon: event.poster_url || '/favicon.ico'
-    });
-    notifiedEvents.push(occurrenceKey);
+  for (const event of events) {
+    if (!notifiedEvents.includes(event.id)) {
+      showBrowserNotification(`Upcoming Event: ${event.title}`, {
+        body: `You have an event tomorrow at ${new Date(event.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}: ${event.location || 'No location'}`,
+        icon: event.poster_url || '/favicon.ico'
+      });
+      notifiedEvents.push(event.id);
+    }
   }
 
   localStorage.setItem(notifiedKey, JSON.stringify(notifiedEvents));

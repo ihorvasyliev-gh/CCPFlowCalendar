@@ -1,28 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, X, Check, Trash2, Calendar, Users, AlertCircle } from 'lucide-react';
-import { Notification, getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from '../services/notificationService';
+import { Notification, getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, subscribeToNotifications } from '../services/notificationService';
 import { Event } from '../types';
 
 interface NotificationCenterProps {
   userId: string;
   events?: Event[];
   userRsvpEventIds?: Set<string>;
+  className?: string;
 }
 
-const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId, events = [], userRsvpEventIds = new Set() }) => {
+const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId, events = [], userRsvpEventIds = new Set(), className = '' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Instance key for RSVP: per-occurrence for recurring, single for non-recurring
-  const getInstanceKey = (e: Event) => e.instanceKey ?? `${e.id}_${new Date(e.date).getTime()}`;
-
-  // Filter upcoming events (occurrences) that user has RSVP'd to
+  // Filter upcoming events that user has RSVP'd to
   const upcomingRsvpEvents = React.useMemo(() => {
     const now = new Date();
     return events
-      .filter(e => userRsvpEventIds.has(getInstanceKey(e))) // User RSVP'd to this occurrence
+      .filter(e => userRsvpEventIds.has(e.id)) // User RSVP'd
       .filter(e => new Date(e.date) > now) // Future event
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) // Sort by date ascending
       .slice(0, 5); // Take top 5
@@ -102,7 +100,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId, events 
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 sm:min-w-0 sm:min-h-0 sm:p-2"
+        className={`relative ${className || 'p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800'}`}
         aria-label="Notifications"
       >
         <Bell className="h-5 w-5" />
@@ -114,37 +112,23 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId, events 
       </button>
 
       {isOpen && (
-        <>
-          {/* Backdrop on mobile: closes panel and prevents scroll/scrollbar leaking */}
-          <div
-            className="fixed inset-0 z-[90] bg-black/30 sm:hidden"
-            onClick={() => setIsOpen(false)}
-            aria-hidden="true"
-          />
-          <div className="fixed inset-x-4 top-[4.5rem] bottom-6 z-[100] sm:inset-auto sm:left-auto sm:right-0 sm:top-auto sm:bottom-auto sm:mt-2 sm:absolute max-w-[calc(100vw-2rem)] sm:max-w-none sm:w-80 bg-white dark:bg-slate-800 rounded-xl sm:rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 sm:z-50 max-h-[calc(100vh-6rem)] sm:max-h-[calc(100vh-5rem)] overflow-hidden flex flex-col animate-slide-down origin-top-right isolate">
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h3>
-              <div className="flex items-center space-x-2">
-                {unreadCount > 0 && (
-                  <button
-                    onClick={handleMarkAllAsRead}
-                    className="p-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
-                    title="Mark all as read"
-                  >
-                    Mark all read
-                  </button>
-                )}
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 z-50 max-h-[calc(100vh-5rem)] overflow-hidden flex flex-col animate-slide-down origin-top-right">
+          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h3>
+            <div className="flex items-center space-x-2">
+              {unreadCount > 0 && (
                 <button
-                  onClick={() => setIsOpen(false)}
-                  className="sm:hidden p-2 -mr-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                  aria-label="Close"
+                  onClick={handleMarkAllAsRead}
+                  className="p-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
+                  title="Mark all as read"
                 >
-                  <X className="h-5 w-5" />
+                  Mark all read
                 </button>
-              </div>
+              )}
             </div>
+          </div>
 
-            <div className="overflow-y-auto flex-1 min-h-0 overscroll-contain">
+          <div className="overflow-y-auto flex-1 custom-scrollbar">
             {/* Upcoming RSVP Events Section */}
             {upcomingRsvpEvents.length > 0 && (
               <div className="border-b border-slate-100 dark:border-slate-700">
@@ -191,8 +175,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId, events 
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0 mt-0.5">
                         <div className={`p-1.5 rounded-full ${notification.type.includes('reminder')
-                            ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
-                            : 'bg-brand-100 text-brand-600 dark:bg-brand-900/30 dark:text-brand-400'
+                          ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
+                          : 'bg-brand-100 text-brand-600 dark:bg-brand-900/30 dark:text-brand-400'
                           }`}>
                           {getIcon(notification.type)}
                         </div>
@@ -231,7 +215,6 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId, events 
             )}
           </div>
         </div>
-        </>
       )}
     </div>
   );

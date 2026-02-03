@@ -75,6 +75,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
                   userId={user.id}
                   events={events} // Pass events
                   userRsvpEventIds={userRsvpEventIds} // Pass RSVP IDs
+                  className="p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all btn-hover-effect rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
                 />
 
                 <button
@@ -123,6 +124,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
                 userId={user.id}
                 events={events} // Pass events
                 userRsvpEventIds={userRsvpEventIds} // Pass RSVP IDs 
+                className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all btn-hover-effect rounded-lg"
               />
 
               <button
