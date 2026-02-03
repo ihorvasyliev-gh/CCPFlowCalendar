@@ -63,8 +63,8 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
               </div>
             </div>
 
-            {/* Desktop Actions Section */}
-            <div className="hidden md:flex items-center gap-3">
+            {/* Desktop Actions Section - lg so phones/tablets get hamburger menu */}
+            <div className="hidden lg:flex items-center gap-3 flex-nowrap">
               <div className="flex flex-col items-end pr-4 mr-2 border-r border-slate-200 dark:border-slate-800">
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{user.fullName}</span>
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">{user.role}</span>
@@ -117,8 +117,8 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
               </div>
             </div>
 
-            {/* Mobile Actions Section */}
-            <div className="flex md:hidden items-center gap-2">
+            {/* Mobile Actions Section - show on everything below lg (1024px) */}
+            <div className="flex lg:hidden items-center gap-2 flex-shrink-0">
               <NotificationCenter
                 userId={user.id}
                 events={events} // Pass events
@@ -150,11 +150,11 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
       {isMobileMenuOpen && (
         <>
           <div
-            className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm animate-fade-in md:hidden"
+            className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm animate-fade-in lg:hidden"
             onClick={handleMobileMenuClose}
             aria-hidden="true"
           />
-          <div className={`fixed top-16 left-0 right-0 z-50 ${theme === 'dark' ? 'glass-panel-dark' : 'bg-white'} border-b border-slate-200 dark:border-slate-800 shadow-xl animate-slide-down md:hidden`}>
+          <div className={`fixed top-16 left-0 right-0 z-50 ${theme === 'dark' ? 'glass-panel-dark' : 'bg-white'} border-b border-slate-200 dark:border-slate-800 shadow-xl animate-slide-down lg:hidden`}>
             <div className="max-w-7xl mx-auto px-4 py-4">
               {/* User Info */}
               <div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-800">

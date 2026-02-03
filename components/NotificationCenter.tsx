@@ -102,7 +102,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId, events 
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+        className="relative p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 sm:min-w-0 sm:min-h-0 sm:p-2"
         aria-label="Notifications"
       >
         <Bell className="h-5 w-5" />
@@ -114,7 +114,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId, events 
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 z-50 max-h-[calc(100vh-5rem)] overflow-hidden flex flex-col animate-slide-down origin-top-right">
+        <div className="absolute mt-2 left-4 right-4 sm:left-auto sm:right-0 sm:w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 z-50 max-h-[70vh] sm:max-h-[calc(100vh-5rem)] overflow-hidden flex flex-col animate-slide-down origin-top-right">
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h3>
             <div className="flex items-center space-x-2">
