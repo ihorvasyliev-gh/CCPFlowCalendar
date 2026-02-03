@@ -690,6 +690,18 @@ const AppContent: React.FC = () => {
     return Array.from(creatorMap.entries()).map(([id, name]) => ({ id, name }));
   }, [events, creatorNames]);
 
+  if (isSessionLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col font-sans">
       <Navbar
