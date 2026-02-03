@@ -77,6 +77,7 @@ const AppContent: React.FC = () => {
         // Пользователь найден в кэше - восстанавливаем мгновенно
         userIdRef.current = cachedUser.id;
         setUser(cachedUser);
+        setIsSessionLoading(false);
 
         // В фоне проверяем и обновляем данные пользователя с сервера
         supabase.auth.getSession().then(({ data: { session }, error }) => {
