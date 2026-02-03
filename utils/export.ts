@@ -79,7 +79,7 @@ const RECURRENCE_LABELS: Record<string, string> = {
   custom: 'Custom'
 };
 
-/** Export events to Excel (.xlsx) with description, comments, poster URL, attachments. */
+/** Export events to Excel (.xlsx) with description, comments, attachments. */
 export const exportToExcel = (events: Event[]): Blob => {
   const headers = [
     'Title',
@@ -90,7 +90,6 @@ export const exportToExcel = (events: Event[]): Blob => {
     'Category',
     'Status',
     'Recurrence',
-    'Poster URL',
     'Comments',
     'Attachments'
   ];
@@ -119,7 +118,6 @@ export const exportToExcel = (events: Event[]): Blob => {
       event.category || '',
       event.status || 'published',
       recurrenceLabel,
-      event.posterUrl || '',
       commentsText,
       attachmentsText
     ];

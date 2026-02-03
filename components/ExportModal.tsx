@@ -121,7 +121,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, events }) =>
                     <FileSpreadsheet className="h-5 w-5 text-green-500 dark:text-green-400 mr-2" />
                     <span className="text-sm font-medium text-gray-900 dark:text-white">Excel (.xlsx)</span>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">All events including recurring, with comments, description and poster links</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">All events including recurring, with comments and description</p>
                 </div>
               </label>
             </div>
