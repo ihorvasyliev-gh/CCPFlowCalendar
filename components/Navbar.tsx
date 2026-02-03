@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, UserRole, Event } from '../types';
+import { User, UserRole } from '../types';
 import { LogOut, Calendar, PlusCircle, Download, Moon, Sun, Menu, X } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 import { useTheme } from '../contexts/ThemeContext';
@@ -10,13 +10,11 @@ interface NavbarProps {
   onAddEventClick: () => void;
   onExportClick?: () => void;
   onRefresh?: () => void;
-  events?: Event[];
+  events?: any[]; // Using any[] to avoid circular dependency issues if types are mixed, but ideally Event[]
   userRsvpEventIds?: Set<string>;
-  onPrefetchEventModal?: () => void;
-  onPrefetchExportModal?: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExportClick, onRefresh, events = [], userRsvpEventIds = new Set(), onPrefetchEventModal, onPrefetchExportModal }) => {
+const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExportClick, onRefresh, events = [], userRsvpEventIds = new Set() }) => {
   const { theme, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -90,8 +88,6 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
                 {onExportClick && (
                   <button
                     onClick={onExportClick}
-                    onMouseEnter={onPrefetchExportModal}
-                    onFocus={onPrefetchExportModal}
                     className="flex items-center space-x-2 text-slate-600 hover:text-slate-900 font-medium px-3 py-1.5 rounded-lg transition-all hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 btn-hover-effect text-sm"
                   >
                     <Download className="h-4 w-4" />
@@ -102,8 +98,6 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
                 {user.role === UserRole.ADMIN && (
                   <button
                     onClick={onAddEventClick}
-                    onMouseEnter={onPrefetchEventModal}
-                    onFocus={onPrefetchEventModal}
                     className="flex items-center space-x-2 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-2 rounded-lg text-sm font-medium btn-hover-effect"
                   >
                     <PlusCircle className="h-4 w-4" />
@@ -175,8 +169,6 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
                 {onExportClick && (
                   <button
                     onClick={handleExportClickMobile}
-                    onMouseEnter={onPrefetchExportModal}
-                    onFocus={onPrefetchExportModal}
                     className="w-full flex items-center space-x-3 text-left px-4 py-3 min-h-[48px] text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all font-medium"
                   >
                     <Download className="h-5 w-5 text-slate-500 dark:text-slate-400" />

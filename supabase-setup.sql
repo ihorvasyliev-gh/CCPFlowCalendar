@@ -695,6 +695,25 @@ DROP CONSTRAINT IF EXISTS events_category_check;
 -- или NULL, что позволяет гибко управлять категориями
 
 -- ============================================
+-- 12. REALTIME: Включение для таблицы events
+-- ============================================
+-- Добавляем таблицу events в публикацию supabase_realtime,
+-- чтобы приложение получало обновления по WebSocket при изменении событий.
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'events'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.events;
+  END IF;
+END $$;
+
+-- Опционально: если нужны старые и новые значения в payload при UPDATE/DELETE
+-- ALTER TABLE public.events REPLICA IDENTITY FULL;
+
+-- ============================================
 -- ГОТОВО!
 -- ============================================
 -- База данных настроена. Теперь вы можете:

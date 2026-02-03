@@ -175,16 +175,28 @@ export function useEvents(user: User | null, showToast: (msg: string, type: 'suc
     return () => clearInterval(syncInterval);
   }, [user]);
 
-  // Realtime
+  // Realtime (optional: set VITE_SUPABASE_REALTIME=false to disable and avoid WebSocket errors in strict networks)
   useEffect(() => {
     if (!user) return;
-    const channel = supabase
-      .channel('events-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
-        refreshEvents(false);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    if (import.meta.env.VITE_SUPABASE_REALTIME === 'false') return;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    try {
+      channel = supabase
+        .channel('events-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
+          refreshEvents(false);
+        })
+        .subscribe((status) => {
+          if (status === 'CHANNEL_ERROR') {
+            console.warn('[Realtime] Subscription error; events will still refresh on interval.');
+          }
+        });
+    } catch (err) {
+      console.warn('[Realtime] Could not subscribe; events will still refresh on interval.', err);
+    }
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
   }, [user, refreshEvents]);
 
   // Creator names
