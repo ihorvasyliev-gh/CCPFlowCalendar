@@ -114,23 +114,37 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId, events 
       </button>
 
       {isOpen && (
-        <div className="absolute mt-2 left-4 right-4 sm:left-auto sm:right-0 sm:w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 z-50 max-h-[70vh] sm:max-h-[calc(100vh-5rem)] overflow-hidden flex flex-col animate-slide-down origin-top-right">
-          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h3>
-            <div className="flex items-center space-x-2">
-              {unreadCount > 0 && (
+        <>
+          {/* Backdrop on mobile: closes panel and prevents scroll/scrollbar leaking */}
+          <div
+            className="fixed inset-0 z-[90] bg-black/30 sm:hidden"
+            onClick={() => setIsOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="fixed inset-x-4 top-[4.5rem] bottom-6 z-[100] sm:inset-auto sm:left-auto sm:right-0 sm:top-auto sm:bottom-auto sm:mt-2 sm:absolute max-w-[calc(100vw-2rem)] sm:max-w-none sm:w-80 bg-white dark:bg-slate-800 rounded-xl sm:rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 sm:z-50 max-h-[calc(100vh-6rem)] sm:max-h-[calc(100vh-5rem)] overflow-hidden flex flex-col animate-slide-down origin-top-right isolate">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h3>
+              <div className="flex items-center space-x-2">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={handleMarkAllAsRead}
+                    className="p-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
+                    title="Mark all as read"
+                  >
+                    Mark all read
+                  </button>
+                )}
                 <button
-                  onClick={handleMarkAllAsRead}
-                  className="p-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
-                  title="Mark all as read"
+                  onClick={() => setIsOpen(false)}
+                  className="sm:hidden p-2 -mr-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                  aria-label="Close"
                 >
-                  Mark all read
+                  <X className="h-5 w-5" />
                 </button>
-              )}
+              </div>
             </div>
-          </div>
 
-          <div className="overflow-y-auto flex-1 custom-scrollbar">
+            <div className="overflow-y-auto flex-1 min-h-0 overscroll-contain">
             {/* Upcoming RSVP Events Section */}
             {upcomingRsvpEvents.length > 0 && (
               <div className="border-b border-slate-100 dark:border-slate-700">
@@ -217,6 +231,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId, events 
             )}
           </div>
         </div>
+        </>
       )}
     </div>
   );
