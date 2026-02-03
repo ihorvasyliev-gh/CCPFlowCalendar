@@ -2,7 +2,7 @@ import { Event } from '../types';
 
 const EVENTS_CACHE_KEY = 'ccp_events_cache';
 const EVENTS_CACHE_TIMESTAMP_KEY = 'ccp_events_cache_timestamp';
-const CACHE_DURATION_MS = 2 * 60 * 1000; // 2 минуты
+const CACHE_DURATION_MS = 30 * 60 * 1000; // 30 минут — «свежий» кеш для мгновенного отображения
 
 interface CachedEvents {
   events: Event[];
@@ -57,6 +57,7 @@ export function cacheEvents(events: Event[]): void {
   }
 }
 
+/** Возвращает кеш только если он ещё «свежий» (в пределах TTL). */
 export function getCachedEvents(): Event[] | null {
   try {
     const json = localStorage.getItem(EVENTS_CACHE_KEY);
@@ -64,14 +65,22 @@ export function getCachedEvents(): Event[] | null {
 
     const ts = localStorage.getItem(EVENTS_CACHE_TIMESTAMP_KEY);
     const age = ts ? Date.now() - parseInt(ts, 10) : Infinity;
-    if (age > CACHE_DURATION_MS) {
-      clearEventsCache();
-      return null;
-    }
+    if (age > CACHE_DURATION_MS) return null;
 
     return deserialize(json);
   } catch {
     clearEventsCache();
+    return null;
+  }
+}
+
+/** Возвращает кеш даже если он устарел (stale-while-revalidate: сразу показываем, потом обновляем). */
+export function getCachedEventsStale(): Event[] | null {
+  try {
+    const json = localStorage.getItem(EVENTS_CACHE_KEY);
+    if (!json) return null;
+    return deserialize(json);
+  } catch {
     return null;
   }
 }

@@ -6,23 +6,41 @@ import { getUserRsvps } from '../services/rsvpService';
 import { checkTomorrowRSVPEvents } from '../services/notificationService';
 import { getUsersByIds } from '../services/authService';
 import { supabase } from '../lib/supabase';
-import { getCachedEvents, cacheEvents, clearEventsCache, getCachedExceptions, cacheExceptions, getCachedRsvps, cacheRsvps, clearRsvpsCache } from '../utils/eventsCache';
+import { getCachedEvents, getCachedEventsStale, cacheEvents, clearEventsCache, getCachedExceptions, cacheExceptions, getCachedRsvps, cacheRsvps, clearRsvpsCache } from '../utils/eventsCache';
+
+function getInitialEventsFromCache(): Event[] {
+  if (typeof window === 'undefined') return [];
+  const cached = getCachedEventsStale();
+  return cached && cached.length > 0 ? cached : [];
+}
+
+function getInitialLoadingFromCache(): boolean {
+  if (typeof window === 'undefined') return true;
+  const cached = getCachedEventsStale();
+  return !(cached && cached.length > 0);
+}
 
 export function useEvents(user: User | null, showToast: (msg: string, type: 'success' | 'error' | 'info') => void) {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loadingEvents, setLoadingEvents] = useState(false);
-  const [userRsvpEventIds, setUserRsvpEventIds] = useState<Set<string>>(new Set());
-  const [recurrenceExceptions, setRecurrenceExceptions] = useState<Map<string, Date[]>>(new Map());
+  const [events, setEvents] = useState<Event[]>(getInitialEventsFromCache);
+  const [loadingEvents, setLoadingEvents] = useState<boolean>(getInitialLoadingFromCache);
+  const [userRsvpEventIds, setUserRsvpEventIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    const r = getCachedRsvps();
+    return r ? new Set(r) : new Set();
+  });
+  const [recurrenceExceptions, setRecurrenceExceptions] = useState<Map<string, Date[]>>(() => {
+    if (typeof window === 'undefined') return new Map();
+    const ex = getCachedExceptions();
+    return ex ?? new Map();
+  });
   const [creatorNames, setCreatorNames] = useState<Record<string, string>>({});
 
-  // Clear event state when user logs out
+  // Сбрасываем состояние при выходе (кеш очищается в handleLogout, чтобы не чистить его при F5 до восстановления сессии)
   useEffect(() => {
     if (!user) {
       setEvents([]);
       setUserRsvpEventIds(new Set());
       setRecurrenceExceptions(new Map());
-      clearEventsCache();
-      clearRsvpsCache();
     }
   }, [user]);
 
@@ -86,11 +104,11 @@ export function useEvents(user: User | null, showToast: (msg: string, type: 'suc
     }
   }, [user, showToast]);
 
-  // Initial load
+  // Initial load: показываем кеш сразу (свежий или stale), затем обновляем в фоне
   useEffect(() => {
     if (!user) return;
     checkTomorrowRSVPEvents(user.id).catch(console.error);
-    const cached = getCachedEvents();
+    const cached = getCachedEvents() ?? getCachedEventsStale();
     const cachedRsvps = getCachedRsvps();
     if (cached && cached.length > 0) {
       setEvents(cached);
