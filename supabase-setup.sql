@@ -65,10 +65,11 @@ CREATE TABLE IF NOT EXISTS public.event_attachments (
   uploaded_by UUID REFERENCES public.users(id) ON DELETE SET NULL
 );
 
--- Таблица комментариев к событиям
+-- Таблица комментариев к событиям (для повторяющихся — отдельно на каждое вхождение)
 CREATE TABLE IF NOT EXISTS public.event_comments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   event_id UUID NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
+  occurrence_date TIMESTAMP WITH TIME ZONE NOT NULL,
   user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   user_name TEXT NOT NULL,
   content TEXT NOT NULL,
@@ -123,6 +124,7 @@ CREATE INDEX IF NOT EXISTS idx_attachments_event ON public.event_attachments(eve
 
 -- Индексы для таблицы event_comments
 CREATE INDEX IF NOT EXISTS idx_comments_event ON public.event_comments(event_id);
+CREATE INDEX IF NOT EXISTS idx_comments_event_occurrence ON public.event_comments(event_id, occurrence_date);
 CREATE INDEX IF NOT EXISTS idx_comments_user ON public.event_comments(user_id);
 CREATE INDEX IF NOT EXISTS idx_comments_created_at ON public.event_comments(created_at);
 

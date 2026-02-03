@@ -59,6 +59,7 @@ const fetchRelatedBatch = async (eventIds: string[]): Promise<RelatedData> => {
     list.push({
       id: c.id,
       eventId: c.event_id,
+      occurrenceDate: c.occurrence_date ? new Date(c.occurrence_date) : new Date(0),
       userId: c.user_id,
       userName: c.user_name,
       content: c.content,
@@ -101,6 +102,7 @@ const fetchRelatedForOne = async (eventId: string, occurrenceDate: Date): Promis
       .from('event_comments')
       .select('*')
       .eq('event_id', eventId)
+      .eq('occurrence_date', occurrenceIso)
       .order('created_at', { ascending: true }),
     supabase
       .from('event_history')
@@ -126,6 +128,7 @@ const fetchRelatedForOne = async (eventId: string, occurrenceDate: Date): Promis
   const comments: EventComment[] = (commentsRes.data || []).map((c: any) => ({
     id: c.id,
     eventId: c.event_id,
+    occurrenceDate: new Date(c.occurrence_date),
     userId: c.user_id,
     userName: c.user_name,
     content: c.content,
@@ -260,14 +263,16 @@ export const getEvents = async (): Promise<Event[]> => {
   return events;
 };
 
-/** Load comments, attachments, and poster for a list of events (e.g. for export). */
+/** Load comments, attachments, and poster for a list of events (e.g. for export). Comments are filtered by occurrence date. */
 export const getEventsWithRelated = async (events: Event[]): Promise<Event[]> => {
   if (events.length === 0) return [];
   const eventIds = [...new Set(events.map(e => e.id))];
   const related = await fetchRelatedBatch(eventIds);
   return events.map(event => {
     const attachments = related.attachmentsByEvent[event.id] ?? [];
-    const comments = related.commentsByEvent[event.id] ?? [];
+    const allComments = related.commentsByEvent[event.id] ?? [];
+    const eventTime = event.date.getTime();
+    const comments = allComments.filter(c => c.occurrenceDate?.getTime() === eventTime);
     const posterAttachment = attachments.find(att => att.type === 'image');
     const posterUrl = event.posterUrl || posterAttachment?.url || undefined;
     return {
@@ -624,8 +629,14 @@ export const deleteEvent = async (id: string, userId?: string, userName?: string
   }
 };
 
-export const addComment = async (eventId: string, userId: string, userName: string, content: string): Promise<EventComment> => {
-  // Проверяем, существует ли событие
+/** Добавить комментарий к событию (к конкретному вхождению для повторяющихся). */
+export const addComment = async (
+  eventId: string,
+  userId: string,
+  userName: string,
+  content: string,
+  occurrenceDate: Date
+): Promise<EventComment> => {
   const { data: eventData, error: fetchError } = await supabase
     .from('events')
     .select('id')
@@ -636,11 +647,12 @@ export const addComment = async (eventId: string, userId: string, userName: stri
     throw new Error('Event not found');
   }
 
-  // Добавляем комментарий
+  const occurrenceIso = occurrenceDate.toISOString();
   const { data: commentData, error: commentError } = await supabase
     .from('event_comments')
     .insert({
       event_id: eventId,
+      occurrence_date: occurrenceIso,
       user_id: userId,
       user_name: userName,
       content: content
@@ -653,10 +665,10 @@ export const addComment = async (eventId: string, userId: string, userName: stri
     throw new Error(commentError?.message || 'Failed to add comment');
   }
 
-  // OPTIMIZATION: Return only the new comment instead of refetching the whole event
   return {
     id: commentData.id,
     eventId: commentData.event_id,
+    occurrenceDate: new Date(commentData.occurrence_date),
     userId: commentData.user_id,
     userName: commentData.user_name,
     content: commentData.content,

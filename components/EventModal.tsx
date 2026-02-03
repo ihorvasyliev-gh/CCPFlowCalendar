@@ -423,27 +423,26 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
   const handleAddComment = async (content: string) => {
     if (!event) return;
 
-    // Optimistic update: add comment immediately with temporary ID
+    const occurrenceDate = event.date;
     const tempId = `temp-${Date.now()}-${Math.random()}`;
     const optimisticComment: EventComment = {
       id: tempId,
       eventId: event.id,
+      occurrenceDate,
       userId: currentUserId,
       userName: currentUserName,
       content: content,
       createdAt: new Date()
     };
 
-    // Update local state immediately
     setComments(prev => [...prev, optimisticComment]);
     if (onEventUpdate) {
       const updatedEvent = { ...event, comments: [...(event.comments || []), optimisticComment] };
       onEventUpdate(updatedEvent);
     }
 
-    // Sync with server in background
     try {
-      const serverComment = await addComment(event.id, currentUserId, currentUserName, content);
+      const serverComment = await addComment(event.id, currentUserId, currentUserName, content, occurrenceDate);
       // Replace temporary comment with server response
       setComments(prev => prev.map(c => c.id === tempId ? serverComment : c));
       if (onEventUpdate) {

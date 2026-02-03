@@ -16,7 +16,11 @@ function serialize(events: Event[]): string {
     date: e.date.toISOString(),
     createdAt: e.createdAt.toISOString(),
     attachments: e.attachments?.map((a) => ({ ...a, uploadedAt: (a.uploadedAt as Date).toISOString() })),
-    comments: e.comments?.map((c) => ({ ...c, createdAt: (c.createdAt as Date).toISOString() })),
+    comments: e.comments?.map((c) => ({
+      ...c,
+      createdAt: (c.createdAt as Date).toISOString(),
+      occurrenceDate: (c.occurrenceDate as Date).toISOString()
+    })),
     history: e.history?.map((h) => ({ ...h, timestamp: (h.timestamp as Date).toISOString() })),
     recurrence: e.recurrence
       ? {
@@ -36,7 +40,11 @@ function deserialize(json: string): Event[] {
     date: new Date(e.date),
     createdAt: new Date(e.createdAt),
     attachments: e.attachments?.map((a: any) => ({ ...a, uploadedAt: new Date(a.uploadedAt) })),
-    comments: e.comments?.map((c: any) => ({ ...c, createdAt: new Date(c.createdAt) })),
+    comments: e.comments?.map((c: any) => ({
+      ...c,
+      createdAt: new Date(c.createdAt),
+      occurrenceDate: c.occurrenceDate ? new Date(c.occurrenceDate) : new Date(c.createdAt)
+    })),
     history: e.history?.map((h: any) => ({ ...h, timestamp: new Date(h.timestamp) })),
     recurrence: e.recurrence
       ? {

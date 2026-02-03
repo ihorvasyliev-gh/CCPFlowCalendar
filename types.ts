@@ -43,6 +43,8 @@ export interface Attachment {
 export interface EventComment {
   id: string;
   eventId: string;
+  /** Дата вхождения (для повторяющихся событий — конкретное вхождение) */
+  occurrenceDate: Date;
   userId: string;
   userName: string;
   content: string;
