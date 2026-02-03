@@ -171,7 +171,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
         setCategory('');
         setStatus('draft');
         setTags('');
-        setRsvpEnabled(false);
+        setRsvpEnabled(true);
         setMaxAttendees('');
         setPosterFile(null);
         setPreviewUrl(null);
@@ -822,6 +822,8 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                     </div>
                   )}
                 </div>
+
+
 
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Description</label>
