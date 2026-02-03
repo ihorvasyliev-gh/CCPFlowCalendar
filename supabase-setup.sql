@@ -109,6 +109,43 @@ CREATE TABLE IF NOT EXISTS public.event_categories (
 );
 
 -- ============================================
+-- 2a. МИГРАЦИЯ: occurrence_date (для существующих БД без этой колонки)
+-- ============================================
+-- Если таблицы созданы старой схемой без occurrence_date, добавляем колонку и заполняем.
+
+-- event_comments: добавить occurrence_date при отсутствии
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'event_comments' AND column_name = 'occurrence_date'
+  ) THEN
+    ALTER TABLE public.event_comments ADD COLUMN occurrence_date TIMESTAMP WITH TIME ZONE;
+    UPDATE public.event_comments c
+    SET occurrence_date = e.date
+    FROM public.events e
+    WHERE c.event_id = e.id AND c.occurrence_date IS NULL;
+    ALTER TABLE public.event_comments ALTER COLUMN occurrence_date SET NOT NULL;
+  END IF;
+END $$;
+
+-- rsvps: добавить occurrence_date при отсутствии
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'rsvps' AND column_name = 'occurrence_date'
+  ) THEN
+    ALTER TABLE public.rsvps ADD COLUMN occurrence_date TIMESTAMP WITH TIME ZONE;
+    UPDATE public.rsvps r
+    SET occurrence_date = e.date
+    FROM public.events e
+    WHERE r.event_id = e.id AND r.occurrence_date IS NULL;
+    ALTER TABLE public.rsvps ALTER COLUMN occurrence_date SET NOT NULL;
+  END IF;
+END $$;
+
+-- ============================================
 -- 3. ИНДЕКСЫ (INDEXES) для производительности
 -- ============================================
 
