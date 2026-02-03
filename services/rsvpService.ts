@@ -63,3 +63,18 @@ export const hasUserRsvped = async (eventId: string, userId: string): Promise<bo
   return !!data;
 };
 
+export const getUserRsvps = async (userId: string): Promise<string[]> => {
+  const { data, error } = await supabase
+    .from('rsvps')
+    .select('event_id')
+    .eq('user_id', userId)
+    .eq('status', 'going');
+
+  if (error) {
+    console.error('Error fetching user RSVPs:', error);
+    return [];
+  }
+
+  return data.map(r => r.event_id);
+};
+

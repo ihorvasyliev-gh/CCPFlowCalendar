@@ -11,11 +11,12 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { User, Event, EventFilters, UserRole } from './types';
 import { getEvents, createEvent, updateEvent, deleteEvent, deleteRecurrenceInstance, getRecurrenceExceptions } from './services/eventService';
 import { logout as logoutService, getCurrentUser, getUsersByIds } from './services/authService';
+import { getUserRsvps } from './services/rsvpService';
 import { checkTomorrowRSVPEvents } from './services/notificationService';
 import { supabase } from './lib/supabase';
 import { filterEvents } from './utils/filterEvents';
 import { getCachedUser, cacheUser, clearUserCache, hasValidSession } from './utils/sessionCache';
-import { getCachedEvents, cacheEvents, clearEventsCache, getCachedExceptions, cacheExceptions } from './utils/eventsCache';
+import { getCachedEvents, cacheEvents, clearEventsCache, getCachedExceptions, cacheExceptions, getCachedRsvps, cacheRsvps, clearRsvpsCache } from './utils/eventsCache';
 import { clearRecurrenceCache } from './utils/recurrence';
 import BottomNavigation from './components/BottomNavigation';
 import { useMedia } from './hooks/useMedia';
@@ -29,6 +30,7 @@ const AppContent: React.FC = () => {
   // Global State
   const [user, setUser] = useState<User | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
+  const [userRsvpEventIds, setUserRsvpEventIds] = useState<Set<string>>(new Set());
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [isSessionLoading, setIsSessionLoading] = useState(true);
 
@@ -146,7 +148,90 @@ const AppContent: React.FC = () => {
 
 
 
-  // Initial Load of Events: показываем кэш сразу, затем обновляем в фоне
+  // Refresh Events Handler
+  const refreshEvents = useCallback(async (isManual = false) => {
+    if (!user) return;
+
+    if (isManual) {
+      setLoadingEvents(true);
+    }
+
+    try {
+      const data = await getEvents();
+      // Only update if data actually changed to avoid unnecessary re-renders
+      setEvents((prev) => {
+        const prevIds = prev.map(e => e.id).sort().join(',');
+        const newIds = data.map(e => e.id).sort().join(',');
+        const prevDates = prev.map(e => e.createdAt.getTime()).sort().join(',');
+        const newDates = data.map(e => e.createdAt.getTime()).sort().join(',');
+
+        if (prevIds !== newIds || prevDates !== newDates) {
+          cacheEvents(data);
+          return data;
+        }
+        return prev; // Return same reference if no changes
+      });
+
+      // Always cache new data even if state didn't update (to ensure cache is fresh)
+      cacheEvents(data);
+
+      // Load recurrence exceptions for recurring events
+      const recurringEventIds = data
+        .filter(e => e.recurrence && e.recurrence.type !== 'none')
+        .map(e => e.id);
+
+      if (recurringEventIds.length > 0) {
+        const exceptionsMap = new Map<string, Date[]>();
+        await Promise.all(
+          recurringEventIds.map(async (eventId) => {
+            try {
+              const exceptions = await getRecurrenceExceptions(eventId);
+              if (exceptions.length > 0) {
+                exceptionsMap.set(eventId, exceptions);
+              }
+            } catch (err) {
+              console.error(`Error loading exceptions for event ${eventId}:`, err);
+            }
+          })
+        );
+        setRecurrenceExceptions(exceptionsMap);
+        cacheExceptions(exceptionsMap);
+      }
+
+      // Load user RSVPs
+      try {
+        const rsvps = await getUserRsvps(user.id);
+        setUserRsvpEventIds(new Set(rsvps));
+        cacheRsvps(rsvps);
+      } catch (err) {
+        console.error('Error loading RSVPs:', err);
+      }
+
+      if (isManual) {
+        // showToast('Calendar refreshed', 'success');
+        // Optional: slight delay to show loading state if it was too fast
+        setTimeout(() => setLoadingEvents(false), 500);
+      }
+    } catch (error) {
+      console.error('Error loading events:', error);
+      if (isManual) {
+        showToast('Failed to refresh events', 'error');
+        setLoadingEvents(false);
+      } else {
+        // Only show error on initial load if no cached data exists
+        const cached = getCachedEvents();
+        if (!cached || cached.length === 0) {
+          showToast('Failed to load events', 'error');
+        }
+      }
+    } finally {
+      if (!isManual) {
+        setLoadingEvents(false);
+      }
+    }
+  }, [user, showToast]);
+
+  // Initial Load of Events
   useEffect(() => {
     if (!user) return;
 
@@ -154,8 +239,13 @@ const AppContent: React.FC = () => {
     checkTomorrowRSVPEvents(user.id).catch(console.error);
 
     const cached = getCachedEvents();
+    const cachedRsvps = getCachedRsvps();
+
     if (cached && cached.length > 0) {
       setEvents(cached);
+      if (cachedRsvps) {
+        setUserRsvpEventIds(new Set(cachedRsvps));
+      }
       setLoadingEvents(false);
 
       // Load cached exceptions immediately
@@ -168,53 +258,12 @@ const AppContent: React.FC = () => {
     }
 
     // Background sync using requestIdleCallback for non-blocking updates
-    const syncEvents = async () => {
-      try {
-        const data = await getEvents();
-        setEvents(data);
-        cacheEvents(data);
-
-        // Load recurrence exceptions for recurring events
-        const recurringEventIds = data
-          .filter(e => e.recurrence && e.recurrence.type !== 'none')
-          .map(e => e.id);
-
-        if (recurringEventIds.length > 0) {
-          const exceptionsMap = new Map<string, Date[]>();
-          await Promise.all(
-            recurringEventIds.map(async (eventId) => {
-              try {
-                const exceptions = await getRecurrenceExceptions(eventId);
-                if (exceptions.length > 0) {
-                  exceptionsMap.set(eventId, exceptions);
-                }
-              } catch (err) {
-                console.error(`Error loading exceptions for event ${eventId}:`, err);
-              }
-            })
-          );
-          setRecurrenceExceptions(exceptionsMap);
-          cacheExceptions(exceptionsMap);
-        }
-      } catch (error) {
-        console.error('Error loading events:', error);
-        // Only show error if no cached data exists
-        if (!cached || cached.length === 0) {
-          showToast('Failed to load events', 'error');
-        }
-      } finally {
-        setLoadingEvents(false);
-      }
-    };
-
-    // Use requestIdleCallback if available, otherwise use setTimeout
     if ('requestIdleCallback' in window) {
-      requestIdleCallback(syncEvents, { timeout: 2000 });
+      requestIdleCallback(() => refreshEvents(false), { timeout: 2000 });
     } else {
-      // Fallback for browsers without requestIdleCallback
-      setTimeout(syncEvents, 100);
+      setTimeout(() => refreshEvents(false), 100);
     }
-  }, [user, showToast]);
+  }, [user, refreshEvents]);
 
   // Background periodic sync (every 2 minutes) when user is active
   useEffect(() => {
@@ -287,7 +336,10 @@ const AppContent: React.FC = () => {
     await logoutService();
     clearUserCache();
     clearEventsCache();
+    clearRsvpsCache();
     setUser(null);
+    setEvents([]);
+    setUserRsvpEventIds(new Set());
   }, []);
 
   // Event Handlers - memoized callbacks
@@ -345,6 +397,9 @@ const AppContent: React.FC = () => {
         return next;
       });
       showToast('Event created successfully', 'success');
+
+      // If creator is automatically RSVP'd (optional logic), update RSVP list here
+      // But typically create doesn't auto-RSVP in this app unless logic changes
     } catch (e) {
       console.error("Error saving event", e);
       // Rollback optimistic update on error
@@ -431,7 +486,22 @@ const AppContent: React.FC = () => {
       return next;
     });
     setSelectedEvent(prev => prev?.id === updatedEvent.id ? updatedEvent : prev);
-  }, []);
+
+    // Update RSVP set if user's attendance status changed
+    if (user && updatedEvent.attendees) {
+      const isAttending = updatedEvent.attendees.includes(user.id);
+      setUserRsvpEventIds(prev => {
+        const next = new Set(prev);
+        if (isAttending) {
+          next.add(updatedEvent.id);
+        } else {
+          next.delete(updatedEvent.id);
+        }
+        cacheRsvps(Array.from(next));
+        return next;
+      });
+    }
+  }, [user]);
 
   const handleDeleteInstance = useCallback(async (eventId: string, instanceDate: Date) => {
     if (!user) return;
@@ -592,13 +662,9 @@ const AppContent: React.FC = () => {
           newNames[u.id] = u.fullName;
         });
 
-        // For cached events where some users might not be found immediately or deleted
-        // we can fallback to IDs for now, but better to just keep them unknown until fetched
-        // or set a placeholder so we don't retry fetching endlessly if they truly don't exist
         unknownIds.forEach(id => {
           if (!newNames[id]) {
-            // Optional: mark as "Unknown User" or leave for retry
-            // newNames[id] = 'Unknown User'; 
+            // handle unknown
           }
         });
 
@@ -624,17 +690,6 @@ const AppContent: React.FC = () => {
     return Array.from(creatorMap.entries()).map(([id, name]) => ({ id, name }));
   }, [events, creatorNames]);
 
-  // Render Logic - always show content immediately (cache loads instantly)
-  if (isSessionLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-slate-900 dark:border-white"></div>
-    </div>;
-  }
-
-  if (!user) {
-    return <LoginPage onLogin={handleLogin} />;
-  }
-
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col font-sans">
       <Navbar
@@ -642,6 +697,9 @@ const AppContent: React.FC = () => {
         onLogout={handleLogout}
         onAddEventClick={handleCreateClick}
         onExportClick={handleExportClick}
+        onRefresh={() => refreshEvents(true)}
+        events={events} // Pass events to Navbar
+        userRsvpEventIds={userRsvpEventIds} // Pass RSVP IDs to Navbar
       />
 
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">

@@ -9,11 +9,24 @@ interface NavbarProps {
   onLogout: () => void;
   onAddEventClick: () => void;
   onExportClick?: () => void;
+  onRefresh?: () => void;
+  events?: any[]; // Using any[] to avoid circular dependency issues if types are mixed, but ideally Event[]
+  userRsvpEventIds?: Set<string>;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExportClick }) => {
+const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExportClick, onRefresh, events = [], userRsvpEventIds = new Set() }) => {
   const { theme, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefreshClick = () => {
+    if (onRefresh) {
+      setIsRefreshing(true);
+      onRefresh();
+      // Reset animation state after a delay
+      setTimeout(() => setIsRefreshing(false), 1000);
+    }
+  };
 
   const handleMobileMenuClose = () => {
     setIsMobileMenuOpen(false);
@@ -37,12 +50,16 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             {/* Logo Section - Minimalist */}
-            <div className="flex items-center space-x-3 group cursor-pointer">
-              <div className="relative flex items-center justify-center p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-brand-600 dark:text-brand-400 btn-hover-effect">
-                <Calendar className="h-5 w-5" />
+            <div
+              className="flex items-center space-x-3 group cursor-pointer"
+              onClick={handleRefreshClick}
+              title="Click to refresh events"
+            >
+              <div className="relative flex items-center justify-center p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-brand-600 dark:text-brand-400 btn-hover-effect overflow-hidden">
+                <Calendar className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
               </div>
               <div className="flex flex-col">
-                <span className="font-semibold text-lg tracking-tight leading-none text-slate-900 dark:text-white">CCP Events</span>
+                <span className="font-semibold text-lg tracking-tight leading-none text-slate-900 dark:text-white select-none">CCP Events</span>
               </div>
             </div>
 
@@ -54,7 +71,11 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
               </div>
 
               <div className="flex items-center gap-2">
-                <NotificationCenter userId={user.id} />
+                <NotificationCenter
+                  userId={user.id}
+                  events={events} // Pass events
+                  userRsvpEventIds={userRsvpEventIds} // Pass RSVP IDs
+                />
 
                 <button
                   onClick={toggleTheme}
@@ -98,7 +119,11 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
 
             {/* Mobile Actions Section */}
             <div className="flex md:hidden items-center gap-2">
-              <NotificationCenter userId={user.id} />
+              <NotificationCenter
+                userId={user.id}
+                events={events} // Pass events
+                userRsvpEventIds={userRsvpEventIds} // Pass RSVP IDs 
+              />
 
               <button
                 onClick={toggleTheme}

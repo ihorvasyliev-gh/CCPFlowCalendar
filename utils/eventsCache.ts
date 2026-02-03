@@ -126,3 +126,32 @@ export function getCachedExceptions(): Map<string, Date[]> | null {
     return null;
   }
 }
+// --- RSVPs Cache ---
+
+const RSVPS_CACHE_KEY = 'ccp_rsvps_cache';
+
+export function cacheRsvps(eventIds: string[]): void {
+  try {
+    localStorage.setItem(RSVPS_CACHE_KEY, JSON.stringify(eventIds));
+  } catch (err) {
+    console.warn('Failed to cache RSVPs:', err);
+  }
+}
+
+export function getCachedRsvps(): string[] | null {
+  try {
+    const json = localStorage.getItem(RSVPS_CACHE_KEY);
+    if (!json) return null;
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+export function clearRsvpsCache(): void {
+  try {
+    localStorage.removeItem(RSVPS_CACHE_KEY);
+  } catch (err) {
+    console.warn('Failed to clear RSVPs cache:', err);
+  }
+}
