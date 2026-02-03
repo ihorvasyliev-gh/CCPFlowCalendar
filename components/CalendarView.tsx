@@ -141,20 +141,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
 
   // For List View: Filter out past events (strictly before now) AND limit to current month
   const listViewEvents = useMemo(() => {
-    const now = new Date();
-    // Reset time for strictly date based comparison if needed, but "past events" usually implies time too.
-    // User request: "filter out events in past"
     return displayEvents.filter(e => {
-      // Keep if it is in the future relative to NOW
-      // OR if it's today (even if time passed, usually good to show today's events still)
-      // Let's say strict > now for simplicity, or maybe end of today?
-      // Let's use: e.date > now
-      // ALSO ensure it belongs to the currently selected month (Calendar navigation behavior)
-
-      const isFuture = e.date >= now;
-      const isCurrentMonth = e.date.getMonth() === currentDate.getMonth() && e.date.getFullYear() === currentDate.getFullYear();
-
-      return isFuture && isCurrentMonth;
+      // Return events that belong to the currently selected month
+      return e.date.getMonth() === currentDate.getMonth() && e.date.getFullYear() === currentDate.getFullYear();
     });
   }, [displayEvents, currentDate]);
 
@@ -299,41 +288,48 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
       {viewMode === 'list' && (
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {listViewEvents.length === 0 ? (
-            <div className="p-8 sm:p-12 text-center text-slate-400 text-sm">No upcoming events found for this month.</div>
+            <div className="p-8 sm:p-12 text-center text-slate-400 text-sm">No events found for this month.</div>
           ) : (
-            listViewEvents.map(event => (
-              <div key={event.instanceKey ?? event.id} onClick={() => onEventClick(event)} className="p-3 sm:p-4 min-h-[64px] sm:min-h-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer flex items-start gap-3 sm:gap-4 transition-colors group touch-manipulation">
-                {/* Date Badge - Minimal */}
-                <div className="flex-shrink-0 w-12 sm:w-14 text-center">
-                  <div className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-wider">{event.date.toLocaleString('default', { month: 'short' })}</div>
-                  <div className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">{event.date.getDate()}</div>
-                </div>
-
-                <div className="flex-grow min-w-0 pt-0.5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <h3 className={`text-sm font-semibold text-slate-900 dark:text-white truncate`}>
-                        {event.title}
-                      </h3>
-                      {event.description && <p className="text-xs text-slate-500 mt-0.5 line-clamp-1 sm:line-clamp-2">{event.description}</p>}
-                    </div>
+            listViewEvents.map(event => {
+              const isPast = event.date < new Date();
+              return (
+                <div
+                  key={event.instanceKey ?? event.id}
+                  onClick={() => onEventClick(event)}
+                  className={`p-3 sm:p-4 min-h-[64px] sm:min-h-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer flex items-start gap-3 sm:gap-4 transition-colors group touch-manipulation ${isPast ? 'opacity-60 grayscale-[0.5]' : ''}`}
+                >
+                  {/* Date Badge - Minimal */}
+                  <div className="flex-shrink-0 w-12 sm:w-14 text-center">
+                    <div className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${isPast ? 'text-slate-400' : 'text-slate-500'}`}>{event.date.toLocaleString('default', { month: 'short' })}</div>
+                    <div className={`text-lg sm:text-xl font-semibold ${isPast ? 'text-slate-500' : 'text-slate-900 dark:text-white'}`}>{event.date.getDate()}</div>
                   </div>
 
-                  <div className="flex items-center flex-wrap gap-2 sm:gap-3 mt-2">
-                    <div className="flex items-center text-xs text-slate-500">
-                      <Clock className="h-3 w-3 mr-1" />
-                      {event.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                    {event.location && (
-                      <div className="flex items-center text-xs text-slate-500 truncate max-w-[200px] sm:max-w-none">
-                        <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
-                        <span className="truncate">{event.location}</span>
+                  <div className="flex-grow min-w-0 pt-0.5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <h3 className={`text-sm font-semibold truncate ${isPast ? 'text-slate-500 decoration-slate-400' : 'text-slate-900 dark:text-white'}`}>
+                          {event.title}
+                        </h3>
+                        {event.description && <p className="text-xs text-slate-500 mt-0.5 line-clamp-1 sm:line-clamp-2">{event.description}</p>}
                       </div>
-                    )}
+                    </div>
+
+                    <div className="flex items-center flex-wrap gap-2 sm:gap-3 mt-2">
+                      <div className="flex items-center text-xs text-slate-500">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {event.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                      {event.location && (
+                        <div className="flex items-center text-xs text-slate-500 truncate max-w-[200px] sm:max-w-none">
+                          <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
+                          <span className="truncate">{event.location}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
