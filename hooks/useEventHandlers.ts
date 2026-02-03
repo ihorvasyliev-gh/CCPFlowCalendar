@@ -127,12 +127,20 @@ export function useEventHandlers(
   }, []);
 
   const handleEventUpdate = useCallback((updatedEvent: Event) => {
-    setEvents((prev) => {
-      const next = prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e));
-      cacheEvents(next);
-      return next;
-    });
-    setSelectedEvent((prev) => (prev?.id === updatedEvent.id ? updatedEvent : prev));
+    const isRecurring = updatedEvent.recurrence && updatedEvent.recurrence.type !== 'none';
+    // For recurring events, the modal passes an *occurrence* (date = e.g. Feb 12), not the series.
+    // Replacing the list event with it would corrupt the calendar: expansion would start from that
+    // date and occurrences before it (e.g. 3rd, 5th) would disappear until the next refresh.
+    if (!isRecurring) {
+      setEvents((prev) => {
+        const next = prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e));
+        cacheEvents(next);
+        return next;
+      });
+      setSelectedEvent((prev) => (prev?.id === updatedEvent.id ? updatedEvent : prev));
+    } else {
+      setSelectedEvent((prev) => (prev?.id === updatedEvent.id ? updatedEvent : prev));
+    }
     if (user && updatedEvent.attendees !== undefined) {
       const isAttending = updatedEvent.attendees.includes(user.id);
       const instanceKey = updatedEvent.instanceKey ?? `${updatedEvent.id}_${updatedEvent.date.getTime()}`;
