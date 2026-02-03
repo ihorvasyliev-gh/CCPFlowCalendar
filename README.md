@@ -1,115 +1,140 @@
 # CCP Event Calendar
 
-Корпоративный календарь событий для Cork City Partnership. Приложение позволяет сотрудникам отслеживать предстоящие мероприятия, встречи и тренинги, а администраторам — управлять расписанием организации.
-
-## 📖 Руководство пользователя
-
-### 1. Вход в систему
-Для доступа к календарю используйте свою рабочую электронную почту и пароль.
-- **Staff**: Сотрудники могут просматривать события и записываться.
-- **Admin**: Администраторы имеют полные права на управление событиями.
-
-### 2. Просмотр календаря
-- **Месяц**: Классический вид для обзора всех событий месяца. Используйте стрелки для навигации.
-- **Список**: Компактный вид для просмотра ближайших событий в хронологическом порядке.
-- **Мобильная версия**: Интерфейс адаптирован для телефонов и планшетов.
-
-### 3. Запись на мероприятия (RSVP)
-Некоторые события требуют предварительной записи.
-1. Откройте карточку события.
-2. Нажмите кнопку **"Join Event"** (Присоединиться).
-3. Ваше имя появится в списке участников.
-4. Если передумали, нажмите **"Cancel RSVP"** (Отменить запись).
-
-### 4. Поиск и фильтры
-Используйте панель инструментов сверху для поиска нужного события:
-- **Поиск**: Введите название или ключевое слово.
-- **Категории**: Фильтруйте по типу (Meeting, Workshop, Training и др.).
-- **Локация**: Выберите место проведения.
-- **Создатель**: Найдите события, созданные конкретным пользователем.
-
-### 5. Дополнительные функции
-- **Комментарии**: Задавайте вопросы и оставляйте заметки к событиям.
-- **Экспорт в календарь**: Нажмите "Add to Calendar", чтобы сохранить событие в ваш Google Calendar, Outlook или скачать .ics файл.
-- **Экспорт в Excel**: Используйте кнопку "Export" в верхней панели для выгрузки списка событий.
+A corporate event calendar for **Cork City Partnership**. Staff can view upcoming events, meetings, and trainings and sign up for them; administrators can manage the organisation’s schedule.
 
 ---
 
-## 🛠 Руководство администратора
+## User guide
 
-Администраторы обладают всеми правами пользователей, плюс дополнительные возможности:
+### 1. Sign in
 
-### 1. Создание события
-- Нажмите кнопку **"+ Create Event"** в верхней панели.
-- Или кликните на любую дату в календаре.
-- Заполните обязательные поля: Название, Дата, Время.
-- **Повторяемость**: Можно создать регулярное событие (ежедневно, еженедельно, ежемесячно).
-- **RSVP**: Включите опцию "RSVP", если требуется учет участников и ограничение мест (поле "Max Attendees").
+Use your work email and password to access the calendar.
 
-### 2. Редактирование и удаление
-- Откройте событие и нажмите иконку ✏️ (карандаш) для редактирования.
-- Для удаления нажмите иконку 🗑️ (корзина).
-- **Важно**: При удалении повторяющегося события система спросит, удалить только этот день или всю серию.
+- **Staff**: View events and RSVP.
+- **Admin**: Full rights to create, edit, and delete events.
 
-### 3. Медиа и файлы
-- **Постер**: Загрузите изображение для обложки события.
-- **Вложения**: Прикрепляйте PDF, документы Word или изображения, которые участники смогут скачать.
+### 2. Calendar views
 
-### 4. Управление категориями
-При создании события вы можете выбрать существующую категорию или создать новую, нажав "Create Category".
+- **Month**: Classic monthly grid. Use the arrows to move between months.
+- **List**: Chronological list of upcoming events.
+- **Mobile**: Layout adapts for phones and tablets.
+
+### 3. RSVP (Join events)
+
+Some events require registration.
+
+1. Open the event card.
+2. Click **Join Event**.
+3. Your name appears in the attendees list.
+4. To cancel, click **Cancel RSVP**.
+
+### 4. Search and filters
+
+Use the top toolbar to find events:
+
+- **Search**: By title or keyword.
+- **Categories**: Filter by type (Meeting, Workshop, Training, etc.).
+- **Location**: Filter by venue.
+- **Creator**: Events created by a specific user.
+
+### 5. Extra features
+
+- **Comments**: Ask questions and add notes on events.
+- **Add to Calendar**: Save an event to Google Calendar, Outlook, or download an `.ics` file.
+- **Export to Excel**: Use **Export** in the top bar to download events as a spreadsheet.
 
 ---
 
-## 👨‍💻 Техническая документация (Для разработчиков)
+## Admin guide
 
-### Требования
+Admins have all user features plus:
+
+### 1. Create event
+
+- Click **+ Create Event** in the top bar, or click any date in the calendar.
+- Fill required fields: Title, Date, Time.
+- **Recurrence**: Set daily, weekly, or monthly repeats.
+- **RSVP**: Enable “RSVP” and set **Max Attendees** if you need a limit.
+
+### 2. Edit and delete
+
+- Open the event and use the ✏️ (edit) icon to change it.
+- Use the 🗑️ (trash) icon to delete.
+- For recurring events, you can delete this occurrence only or the whole series.
+
+### 3. Media and attachments
+
+- **Poster**: Upload a cover image.
+- **Attachments**: Add PDFs, Word docs, or images for attendees to download.
+
+### 4. Categories
+
+When creating an event, pick an existing category or click **Create Category** to add a new one.
+
+---
+
+## For developers
+
+### Requirements
+
 - Node.js 18+
-- npm или yarn
+- npm or yarn
 - Supabase account
-- Cloudflare R2 (для хранения файлов)
+- Cloudflare R2 (for file storage)
 
-### Установка и запуск
+### Setup and run
 
-1. **Клонирование репозитория**
+1. **Clone and install**
+
    ```bash
    git clone https://github.com/ihorvasyliev-gh/CCPFlowCalendar.git
    cd CCPFlowCalendar
    npm install
    ```
 
-2. **Настройка переменных окружения**  
-   Создайте файл `.env.local` в корне проекта:
+2. **Environment variables**
+
+   Create `.env.local` in the project root:
+
    ```env
    VITE_SUPABASE_URL=your_project_url
    VITE_SUPABASE_ANON_KEY=your_anon_key
    VITE_CLOUDFLARE_R2_PUBLIC_URL=your_r2_public_url
    ```
 
-3. **Запуск локально**
+3. **Run locally**
+
    ```bash
    npm run dev
    ```
-   Приложение будет доступно по адресу `http://localhost:3000`.
 
-### Деплой
+   App runs at `http://localhost:3000`.
 
-Приложение настроено для деплоя на **Cloudflare Pages**.
-1. Подключите GitHub репозиторий в Cloudflare Pages.
-2. Установите Build Command: `npm run build`.
-3. Build Output Directory: `dist`.
-4. Добавьте переменные окружения в настройках проекта Cloudflare.
+### Deploy
 
-### Стек технологий
-- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS
-- **Backend**: Supabase (PostgreSQL, Auth, Realtime)
-- **Storage**: Cloudflare R2
-- **Icons**: Lucide React
+The app is set up for **Cloudflare Pages**.
 
-### Структура базы данных (Supabase)
-- `events`: Основная таблица событий.
-- `users`: Профили пользователей и роли.
-- `rsvps`: Таблица участников событий.
-- `event_comments`: Комментарии к событиям.
+1. Connect your GitHub repo in Cloudflare Pages.
+2. **Build command**: `npm run build`
+3. **Build output directory**: `dist`
+4. Add the same environment variables in the Cloudflare project settings.
+
+### Tech stack
+
+| Layer   | Stack |
+|--------|--------|
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS |
+| Backend  | Supabase (PostgreSQL, Auth, Realtime) |
+| Storage  | Cloudflare R2 |
+| Icons    | Lucide React |
+
+### Database (Supabase)
+
+- `events` — events
+- `users` — user profiles and roles
+- `rsvps` — event attendees
+- `event_comments` — comments on events
 
 ---
-© 2024 Cork City Partnership. Internal Use Only.
+
+© 2024 Cork City Partnership. Internal use only.
