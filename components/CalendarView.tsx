@@ -2,9 +2,11 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Event, ViewMode, EventCategory, UserRole } from '../types';
 import { getDaysInMonth, getFirstDayOfMonth, isSameDay, addMonths } from '../utils/date';
 import { expandRecurringEvents } from '../utils/recurrence';
-import { ChevronLeft, ChevronRight, Grid, List as ListIcon, MapPin, Clock, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Grid, List as ListIcon, MapPin, Clock, Plus, ChevronDown } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useMedia } from '../hooks/useMedia';
+
+const LIST_VIEW_BATCH_SIZE = 50;
 
 interface CalendarViewProps {
   events: Event[];
@@ -147,6 +149,20 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
     });
   }, [displayEvents, currentDate]);
 
+  // List view virtualization: show first N items, then "Show more"
+  const [visibleListCount, setVisibleListCount] = useState(LIST_VIEW_BATCH_SIZE);
+  useEffect(() => {
+    setVisibleListCount(LIST_VIEW_BATCH_SIZE);
+  }, [currentDate, listViewEvents.length]);
+  const visibleListEvents = useMemo(
+    () => listViewEvents.slice(0, visibleListCount),
+    [listViewEvents, visibleListCount]
+  );
+  const hasMoreListEvents = listViewEvents.length > visibleListCount;
+  const showMoreListEvents = useCallback(() => {
+    setVisibleListCount(prev => Math.min(prev + LIST_VIEW_BATCH_SIZE, listViewEvents.length));
+  }, [listViewEvents.length]);
+
 
   const getCategoryColor = (category?: EventCategory) => {
     if (!category) return 'bg-brand-50 text-brand-800 dark:bg-brand-900 dark:text-brand-100';
@@ -224,15 +240,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
       {/* Grid View */}
       {viewMode === 'grid' && (
         <div className="p-3 sm:p-6">
-          <div className="grid grid-cols-7 mb-2">
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-              <div key={day} className="text-center text-[9px] sm:text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-0.5">
-                {day}
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 border-t border-l border-slate-100 dark:border-slate-800">
-            {calendarDays.map((day, idx) => {
+          <div key={`month-${currentDate.getFullYear()}-${currentDate.getMonth()}`} className="animate-fade-in">
+            <div className="grid grid-cols-7 mb-2">
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                <div key={day} className="text-center text-[9px] sm:text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-0.5">
+                  {day}
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 border-t border-l border-slate-100 dark:border-slate-800">
+              {calendarDays.map((day, idx) => {
               if (!day) return <div key={`empty-${idx}`} className="min-h-[6rem] sm:min-h-[8rem] bg-slate-50/50 dark:bg-slate-800/30 border-b border-r border-slate-100 dark:border-slate-800"></div>;
 
               const dayEvents = displayEvents.filter(e => isSameDay(e.date, day));
@@ -280,17 +297,19 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
                 </div>
               );
             })}
+            </div>
           </div>
         </div>
       )}
 
       {/* List View */}
       {viewMode === 'list' && (
-        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+        <div key={`list-${currentDate.getFullYear()}-${currentDate.getMonth()}`} className="animate-fade-in divide-y divide-slate-100 dark:divide-slate-800">
           {listViewEvents.length === 0 ? (
             <div className="p-8 sm:p-12 text-center text-slate-400 text-sm">No events found for this month.</div>
           ) : (
-            listViewEvents.map(event => {
+            <>
+            {visibleListEvents.map(event => {
               const isPast = event.date < new Date();
               return (
                 <div
@@ -329,7 +348,20 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
                   </div>
                 </div>
               );
-            })
+            })}
+            {hasMoreListEvents && (
+              <div className="flex justify-center py-4">
+                <button
+                  type="button"
+                  onClick={showMoreListEvents}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                  Show more ({listViewEvents.length - visibleListCount} remaining)
+                </button>
+              </div>
+            )}
+            </>
           )}
         </div>
       )}

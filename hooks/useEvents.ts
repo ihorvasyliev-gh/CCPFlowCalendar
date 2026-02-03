@@ -6,7 +6,7 @@ import { getUserRsvps } from '../services/rsvpService';
 import { checkTomorrowRSVPEvents } from '../services/notificationService';
 import { getUsersByIds } from '../services/authService';
 import { supabase } from '../lib/supabase';
-import { getCachedEvents, getCachedEventsStale, cacheEvents, clearEventsCache, getCachedExceptions, cacheExceptions, getCachedRsvps, cacheRsvps, clearRsvpsCache } from '../utils/eventsCache';
+import { getCachedEvents, getCachedEventsStale, cacheEvents, clearEventsCache, getCachedExceptions, cacheExceptions, getCachedRsvps, cacheRsvps, clearRsvpsCache, getCachedCreatorNamesStale, cacheCreatorNames } from '../utils/eventsCache';
 
 function getInitialEventsFromCache(): Event[] {
   if (typeof window === 'undefined') return [];
@@ -33,7 +33,11 @@ export function useEvents(user: User | null, showToast: (msg: string, type: 'suc
     const ex = getCachedExceptions();
     return ex ?? new Map();
   });
-  const [creatorNames, setCreatorNames] = useState<Record<string, string>>({});
+  const [creatorNames, setCreatorNames] = useState<Record<string, string>>(() => {
+    if (typeof window === 'undefined') return {};
+    const cached = getCachedCreatorNamesStale();
+    return cached && Object.keys(cached).length > 0 ? cached : {};
+  });
 
   // Сбрасываем состояние при выходе (кеш очищается в handleLogout, чтобы не чистить его при F5 до восстановления сессии)
   useEffect(() => {
@@ -46,7 +50,6 @@ export function useEvents(user: User | null, showToast: (msg: string, type: 'suc
 
   const refreshEvents = useCallback(async (isManual = false) => {
     if (!user) return;
-    if (isManual) setLoadingEvents(true);
     try {
       const data = await getEvents();
       setEvents((prev) => {
@@ -89,18 +92,16 @@ export function useEvents(user: User | null, showToast: (msg: string, type: 'suc
         console.error('Error loading RSVPs:', err);
       }
 
-      if (isManual) setTimeout(() => setLoadingEvents(false), 500);
     } catch (error) {
       console.error('Error loading events:', error);
       if (isManual) {
         showToast('Failed to refresh events', 'error');
-        setLoadingEvents(false);
       } else {
         const cached = getCachedEvents();
         if (!cached || cached.length === 0) showToast('Failed to load events', 'error');
       }
     } finally {
-      if (!isManual) setLoadingEvents(false);
+      setLoadingEvents(false);
     }
   }, [user, showToast]);
 
@@ -198,7 +199,11 @@ export function useEvents(user: User | null, showToast: (msg: string, type: 'suc
         const newNames: Record<string, string> = {};
         users.forEach(u => { newNames[u.id] = u.fullName; });
         if (Object.keys(newNames).length > 0) {
-          setCreatorNames(prev => ({ ...prev, ...newNames }));
+          setCreatorNames(prev => {
+            const merged = { ...prev, ...newNames };
+            cacheCreatorNames(merged);
+            return merged;
+          });
         }
       } catch (err) {
         console.error('Failed to load creator names', err);

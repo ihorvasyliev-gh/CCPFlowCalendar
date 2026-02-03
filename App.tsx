@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useMemo } from 'react';
+import React, { Suspense, lazy, useMemo, useEffect, useCallback } from 'react';
 import Navbar from './components/Navbar';
 import CalendarView from './components/CalendarView';
 import LoginPage from './pages/LoginPage';
@@ -17,8 +17,16 @@ import BottomNavigation from './components/BottomNavigation';
 import { useMedia } from './hooks/useMedia';
 import { expandRecurringEvents } from './utils/recurrence';
 
-const EventModal = lazy(() => import('./components/EventModal'));
-const ExportModal = lazy(() => import('./components/ExportModal'));
+const eventModalChunk = () => import('./components/EventModal');
+const exportModalChunk = () => import('./components/ExportModal');
+const EventModal = lazy(eventModalChunk);
+const ExportModal = lazy(exportModalChunk);
+
+const ModalFallback: React.FC = () => (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 dark:bg-black/50 backdrop-blur-sm">
+    <div className="animate-spin rounded-full h-10 w-10 border-2 border-white border-t-transparent" aria-hidden />
+  </div>
+);
 
 const AppContent: React.FC = () => {
   const { showToast } = useToast();
@@ -69,6 +77,22 @@ const AppContent: React.FC = () => {
     showToast
   );
 
+  const prefetchEventModal = useCallback(() => { eventModalChunk(); }, []);
+  const prefetchExportModal = useCallback(() => { exportModalChunk(); }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const prefetch = () => {
+      eventModalChunk().catch(() => {});
+      exportModalChunk().catch(() => {});
+    };
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(prefetch, { timeout: 3000 });
+    } else {
+      setTimeout(prefetch, 2000);
+    }
+  }, [user]);
+
   // Expanded upcoming events for NotificationCenter (per-occurrence RSVP)
   const upcomingExpandedEvents = useMemo(() => {
     const start = new Date();
@@ -101,6 +125,8 @@ const AppContent: React.FC = () => {
         onRefresh={() => refreshEvents(true)}
         events={upcomingExpandedEvents}
         userRsvpEventIds={userRsvpEventIds}
+        onPrefetchEventModal={prefetchEventModal}
+        onPrefetchExportModal={prefetchExportModal}
       />
 
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -135,7 +161,7 @@ const AppContent: React.FC = () => {
       </main>
 
       {isModalOpen && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<ModalFallback />}>
           <EventModal
             isOpen={isModalOpen}
             onClose={handleCloseModal}
@@ -154,7 +180,7 @@ const AppContent: React.FC = () => {
       )}
 
       {isExportModalOpen && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<ModalFallback />}>
           <ExportModal
             isOpen={isExportModalOpen}
             onClose={() => setIsExportModalOpen(false)}

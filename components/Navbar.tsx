@@ -12,9 +12,11 @@ interface NavbarProps {
   onRefresh?: () => void;
   events?: Event[];
   userRsvpEventIds?: Set<string>;
+  onPrefetchEventModal?: () => void;
+  onPrefetchExportModal?: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExportClick, onRefresh, events = [], userRsvpEventIds = new Set() }) => {
+const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExportClick, onRefresh, events = [], userRsvpEventIds = new Set(), onPrefetchEventModal, onPrefetchExportModal }) => {
   const { theme, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -88,6 +90,8 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
                 {onExportClick && (
                   <button
                     onClick={onExportClick}
+                    onMouseEnter={onPrefetchExportModal}
+                    onFocus={onPrefetchExportModal}
                     className="flex items-center space-x-2 text-slate-600 hover:text-slate-900 font-medium px-3 py-1.5 rounded-lg transition-all hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 btn-hover-effect text-sm"
                   >
                     <Download className="h-4 w-4" />
@@ -98,6 +102,8 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
                 {user.role === UserRole.ADMIN && (
                   <button
                     onClick={onAddEventClick}
+                    onMouseEnter={onPrefetchEventModal}
+                    onFocus={onPrefetchEventModal}
                     className="flex items-center space-x-2 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-2 rounded-lg text-sm font-medium btn-hover-effect"
                   >
                     <PlusCircle className="h-4 w-4" />
@@ -169,6 +175,8 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
                 {onExportClick && (
                   <button
                     onClick={handleExportClickMobile}
+                    onMouseEnter={onPrefetchExportModal}
+                    onFocus={onPrefetchExportModal}
                     className="w-full flex items-center space-x-3 text-left px-4 py-3 min-h-[48px] text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all font-medium"
                   >
                     <Download className="h-5 w-5 text-slate-500 dark:text-slate-400" />

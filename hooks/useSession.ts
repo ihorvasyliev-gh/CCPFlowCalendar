@@ -7,9 +7,14 @@ import { getCachedUser, cacheUser, clearUserCache } from '../utils/sessionCache'
 import { clearEventsCache, clearRsvpsCache } from '../utils/eventsCache';
 import { clearRecurrenceCache } from '../utils/recurrence';
 
+function getInitialUser(): User | null {
+  if (typeof window === 'undefined') return null;
+  return getCachedUser();
+}
+
 export function useSession() {
-  const [user, setUser] = useState<User | null>(null);
-  const [isSessionLoading, setIsSessionLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(getInitialUser);
+  const [isSessionLoading, setIsSessionLoading] = useState(() => typeof window !== 'undefined' && !getCachedUser());
   const userIdRef = React.useRef<string | null>(null);
 
   useEffect(() => {

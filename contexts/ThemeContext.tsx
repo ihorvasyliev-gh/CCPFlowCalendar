@@ -23,6 +23,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return (saved as Theme) || 'light';
   });
 
+  // Sync React state with already-applied class from inline script in index.html
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'dark') {
