@@ -282,3 +282,35 @@ a,
         opacity: 0.8;
     }
 }
+
+/* --- Mobile Calendar Optimizations --- */
+
+/* Event indicator dots for grid view on mobile */
+@media (max-width: 640px) {
+    /* Ensure dots have adequate touch targets */
+    .event-dot {
+        min-width: 8px;
+        min-height: 8px;
+    }
+    
+    /* Sticky headers for agenda view */
+    .sticky {
+        position: -webkit-sticky;
+        position: sticky;
+    }
+}
+
+/* Improved line-clamp for multi-line text truncation */
+.line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}

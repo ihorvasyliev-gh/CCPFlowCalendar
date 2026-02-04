@@ -84,7 +84,7 @@ export interface Event {
   createdAt: Date;
 }
 
-export type ViewMode = 'grid' | 'list' | 'week' | 'day';
+export type ViewMode = 'grid' | 'list' | 'agenda';
 
 export interface EventFilters {
   search?: string;
