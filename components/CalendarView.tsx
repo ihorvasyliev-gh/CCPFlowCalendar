@@ -284,27 +284,33 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
                       )}
                     </div>
 
-                    {/* Mobile: Show dots for events, Desktop: Show event names */}
+                    {/* Mobile: Show colored chips with text, Desktop: Show event names */}
                     {isMobile ? (
-                      <div className="flex flex-col items-center justify-center gap-1.5">
+                      <div className="flex flex-col items-center justify-center gap-1">
                         {hasEvents && (
-                          <div className="flex flex-wrap justify-center gap-1.5">
-                            {dayEvents.slice(0, 4).map(ev => {
+                          <div className="flex flex-col gap-0.5 w-full px-0.5">
+                            {dayEvents.slice(0, 3).map(ev => {
                               const colorClass = getCategoryColor(ev.category);
+                              // Get first 2-3 letters of title, max 3 chars
+                              const shortTitle = ev.title.slice(0, 3).toUpperCase();
                               return (
                                 <div
                                   key={ev.instanceKey ?? ev.id}
                                   onClick={(e) => { e.stopPropagation(); onEventClick(ev); }}
-                                  className={`w-1.5 h-1.5 rounded-full ${colorClass} cursor-pointer transition-transform active:scale-150`}
+                                  className={`w-full px-1.5 py-0.5 rounded-md ${colorClass} cursor-pointer transition-all active:scale-95 active:shadow-sm text-center touch-manipulation`}
                                   title={ev.title}
-                                />
+                                >
+                                  <span className="text-[9px] font-bold tracking-tight">
+                                    {shortTitle}
+                                  </span>
+                                </div>
                               );
                             })}
                           </div>
                         )}
-                        {dayEvents.length > 4 && (
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-                            +{dayEvents.length - 4}
+                        {dayEvents.length > 3 && (
+                          <div className="text-[9px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
+                            +{dayEvents.length - 3}
                           </div>
                         )}
                       </div>
