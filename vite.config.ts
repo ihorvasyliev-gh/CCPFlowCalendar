@@ -80,9 +80,9 @@ export default defineConfig(({ mode }) => {
       },
       // Minification settings - using esbuild (faster and built-in)
       minify: 'esbuild',
-      // Drop console logs and debugger in production
+      // Production: remove all console.* and debugger from the bundle
       esbuild: {
-        drop: mode === 'production' ? ['console', 'debugger'] : [],
+        ...(mode === 'production' ? { drop: ['console', 'debugger'] } : {}),
       },
     },
     define: {

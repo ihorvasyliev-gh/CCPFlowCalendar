@@ -9,7 +9,7 @@ export function registerServiceWorker(): void {
                     scope: '/',
                 });
 
-                console.log('✅ Service Worker registered:', registration.scope);
+                if (import.meta.env.DEV) console.log('✅ Service Worker registered:', registration.scope);
 
                 // Check for updates periodically
                 registration.addEventListener('updatefound', () => {
@@ -18,7 +18,7 @@ export function registerServiceWorker(): void {
                         newWorker.addEventListener('statechange', () => {
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                                 // New service worker available, prompt user or auto-update
-                                console.log('🔄 New version available! Refreshing...');
+                                if (import.meta.env.DEV) console.log('🔄 New version available! Refreshing...');
 
                                 // Send skip waiting message to service worker
                                 newWorker.postMessage({ type: 'SKIP_WAITING' });
@@ -42,7 +42,7 @@ export function registerServiceWorker(): void {
                 }, 60 * 60 * 1000);
 
             } catch (error) {
-                console.error('❌ Service Worker registration failed:', error);
+                if (import.meta.env.DEV) console.error('❌ Service Worker registration failed:', error);
             }
         });
     }
@@ -53,7 +53,7 @@ export function unregisterServiceWorker(): Promise<boolean> {
         return navigator.serviceWorker.ready
             .then((registration) => registration.unregister())
             .catch((error) => {
-                console.error('Error unregistering service worker:', error);
+                if (import.meta.env.DEV) console.error('Error unregistering service worker:', error);
                 return false;
             });
     }

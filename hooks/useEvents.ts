@@ -187,12 +187,12 @@ export function useEvents(user: User | null, showToast: (msg: string, type: 'suc
           refreshEvents(false);
         })
         .subscribe((status) => {
-          if (status === 'CHANNEL_ERROR') {
+          if (status === 'CHANNEL_ERROR' && import.meta.env.DEV) {
             console.warn('[Realtime] Subscription error; events will still refresh on interval.');
           }
         });
     } catch (err) {
-      console.warn('[Realtime] Could not subscribe; events will still refresh on interval.', err);
+      if (import.meta.env.DEV) console.warn('[Realtime] Could not subscribe; events will still refresh on interval.', err);
     }
     return () => {
       if (channel) supabase.removeChannel(channel);

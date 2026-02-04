@@ -97,7 +97,7 @@ const AppContent: React.FC = () => {
           // Обновляем данные пользователя в фоне (не блокируем UI)
           fetchUserProfileFromServer(session.user.id).then((freshUser) => {
             if (freshUser && isMounted) {
-              console.log('User data refreshed from server:', freshUser.email);
+              if (import.meta.env.DEV) console.log('User data refreshed from server:', freshUser.email);
             }
           });
         });

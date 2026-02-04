@@ -21,7 +21,7 @@ let MOCK_NOTIFICATIONS: Notification[] = [];
 // Request browser notification permission
 export const requestNotificationPermission = async (): Promise<boolean> => {
   if (!('Notification' in window)) {
-    console.warn('This browser does not support notifications');
+    if (import.meta.env.DEV) console.warn('This browser does not support notifications');
     return false;
   }
 

@@ -61,7 +61,7 @@ export function cacheEvents(events: Event[]): void {
     localStorage.setItem(EVENTS_CACHE_KEY, serialize(events));
     localStorage.setItem(EVENTS_CACHE_TIMESTAMP_KEY, cached.timestamp.toString());
   } catch (err) {
-    console.warn('Failed to cache events:', err);
+    if (import.meta.env.DEV) console.warn('Failed to cache events:', err);
   }
 }
 
@@ -101,7 +101,7 @@ export function clearEventsCache(): void {
     localStorage.removeItem(CREATOR_NAMES_CACHE_KEY);
     localStorage.removeItem(CREATOR_NAMES_CACHE_TIMESTAMP_KEY);
   } catch (err) {
-    console.warn('Failed to clear events cache:', err);
+    if (import.meta.env.DEV) console.warn('Failed to clear events cache:', err);
   }
 }
 
@@ -132,7 +132,7 @@ export function cacheExceptions(exceptions: Map<string, Date[]>): void {
   try {
     localStorage.setItem(EXCEPTIONS_CACHE_KEY, serializeExceptions(exceptions));
   } catch (err) {
-    console.warn('Failed to cache exceptions:', err);
+    if (import.meta.env.DEV) console.warn('Failed to cache exceptions:', err);
   }
 }
 
@@ -153,7 +153,7 @@ export function cacheRsvps(eventIds: string[]): void {
   try {
     localStorage.setItem(RSVPS_CACHE_KEY, JSON.stringify(eventIds));
   } catch (err) {
-    console.warn('Failed to cache RSVPs:', err);
+    if (import.meta.env.DEV) console.warn('Failed to cache RSVPs:', err);
   }
 }
 
@@ -171,7 +171,7 @@ export function clearRsvpsCache(): void {
   try {
     localStorage.removeItem(RSVPS_CACHE_KEY);
   } catch (err) {
-    console.warn('Failed to clear RSVPs cache:', err);
+    if (import.meta.env.DEV) console.warn('Failed to clear RSVPs cache:', err);
   }
 }
 
@@ -186,7 +186,7 @@ export function cacheCreatorNames(names: Record<string, string>): void {
     localStorage.setItem(CREATOR_NAMES_CACHE_KEY, JSON.stringify(names));
     localStorage.setItem(CREATOR_NAMES_CACHE_TIMESTAMP_KEY, Date.now().toString());
   } catch (err) {
-    console.warn('Failed to cache creator names:', err);
+    if (import.meta.env.DEV) console.warn('Failed to cache creator names:', err);
   }
 }
 
