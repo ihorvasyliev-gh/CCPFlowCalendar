@@ -32,6 +32,7 @@ const AppContent: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [userRsvpEventIds, setUserRsvpEventIds] = useState<Set<string>>(new Set());
   const [loadingEvents, setLoadingEvents] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSessionLoading, setIsSessionLoading] = useState(true);
 
   const [recurrenceExceptions, setRecurrenceExceptions] = useState<Map<string, Date[]>>(new Map());
@@ -148,13 +149,11 @@ const AppContent: React.FC = () => {
 
 
 
-  // Refresh Events Handler
+  // Refresh Events Handler — при обновлении показываем кеш + крутим логотип, скелетоны только при первой загрузке без кеша
   const refreshEvents = useCallback(async (isManual = false) => {
     if (!user) return;
 
-    if (isManual) {
-      setLoadingEvents(true);
-    }
+    setIsRefreshing(true);
 
     try {
       const data = await getEvents();
@@ -207,27 +206,19 @@ const AppContent: React.FC = () => {
         console.error('Error loading RSVPs:', err);
       }
 
-      if (isManual) {
-        showToast('Calendar updated', 'success', 3000);
-        // Optional: slight delay to show loading state if it was too fast
-        setTimeout(() => setLoadingEvents(false), 500);
-      }
     } catch (error) {
       console.error('Error loading events:', error);
       if (isManual) {
         showToast('Failed to refresh events', 'error');
-        setLoadingEvents(false);
       } else {
-        // Only show error on initial load if no cached data exists
         const cached = getCachedEvents();
         if (!cached || cached.length === 0) {
           showToast('Failed to load events', 'error');
         }
       }
     } finally {
-      if (!isManual) {
-        setLoadingEvents(false);
-      }
+      setLoadingEvents(false);
+      setIsRefreshing(false);
     }
   }, [user, showToast]);
 
@@ -740,6 +731,7 @@ const AppContent: React.FC = () => {
         onExportClick={handleExportClick}
         onRefresh={() => refreshEvents(true)}
         loadingEvents={loadingEvents}
+        isRefreshing={isRefreshing}
         events={events}
         userRsvpEventIds={userRsvpEventIds}
       />
