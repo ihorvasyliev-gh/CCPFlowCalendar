@@ -78,13 +78,11 @@ export default defineConfig(({ mode }) => {
           assetFileNames: 'assets/[name]-[hash].[ext]',
         },
       },
-      // Minification settings
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          drop_console: mode === 'production',
-          drop_debugger: mode === 'production',
-        },
+      // Minification settings - using esbuild (faster and built-in)
+      minify: 'esbuild',
+      // Drop console logs and debugger in production
+      esbuild: {
+        drop: mode === 'production' ? ['console', 'debugger'] : [],
       },
     },
     define: {
