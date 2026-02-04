@@ -1,6 +1,23 @@
 # CCP Event Calendar
 
-A corporate event calendar for **Cork City Partnership**. Staff can view upcoming events, meetings, and trainings and sign up for them; administrators manage the organisation’s schedule, create and edit events, and control visibility.
+A corporate event calendar web application for **Cork City Partnership**. Staff view and sign up for events; administrators manage the organisation’s schedule, create and edit events, and control visibility. Built with React, TypeScript, and Supabase.
+
+---
+
+## What this application does (functionality summary)
+
+- **Authentication** — Sign in with work email and password (Supabase Auth). Roles: staff (default) and admin.
+- **Calendar views** — Month grid and list view; responsive layout with mobile bottom navigation.
+- **Events** — View event details (title, description, date, time, location, category, tags, poster, attachments). Admins create, edit, and delete events; staff see only published events.
+- **Recurrence** — Events can repeat daily, weekly, monthly, or yearly with interval and end date; admins can delete a single occurrence or the whole series.
+- **RSVP** — Join or cancel attendance for events with RSVP enabled; see attendee list and max attendees.
+- **Comments** — Add and delete comments on events (per occurrence for recurring events).
+- **Search and filters** — Search by title, description, location, tags; filter by category, location, creator, date range; admins can also filter by draft/published.
+- **Add to Calendar** — Per-event links: Google Calendar, Outlook.com, Office 365, or download `.ics` for Apple Calendar and others.
+- **Export** — Export the current filtered set as **iCal (`.ics`)** or **Excel (`.xlsx`)**; recurring events are expanded in Excel over a configurable range.
+- **Notifications** — Notification center (bell icon): view, mark read, delete; quick access to upcoming events the user has RSVP’d to.
+- **Theme** — Light/dark theme toggle (persisted).
+- **Media** — Event posters and file attachments (PDFs, documents, images) with download; optional link to open location in Google Maps.
 
 ---
 
@@ -17,10 +34,10 @@ A corporate event calendar for **Cork City Partnership**. Staff can view upcomin
 
 ## Overview
 
-- **Sign in:** Work email and password (Supabase Auth).
-- **Roles:** `staff` (default for new accounts) and `admin`. Admins get extra actions and see draft events.
-- **Views:** Month grid and list; layout adapts for mobile.
-- **Export:** iCal (`.ics`) and Excel; “Add to Calendar” per event (Google, Outlook, `.ics` download).
+- **Sign in:** Work email and password via Supabase Auth. New accounts get the **staff** role by default; an admin must promote users to **admin** (e.g. via Supabase or your user management).
+- **Roles:** **staff** — view published events, RSVP, comment, export, use “Add to Calendar”; **admin** — all of the above plus create/edit/delete events, see and filter by draft events, create categories.
+- **Views:** Month grid and list; layout adapts for mobile with bottom navigation. Navigate months (previous / next / today).
+- **Export:** iCal (`.ics`) and Excel (`.xlsx`); “Add to Calendar” per event (Google, Outlook, `.ics` download).
 
 ---
 
@@ -49,7 +66,7 @@ All signed-in **staff** can:
    - **Delete** their own comments (with confirmation).
 
 6. **Add to Calendar**
-   - From the event modal: **Add to Calendar** → choose **Google Calendar**, **Outlook.com**, **Office 365**, or **Download .ics file** to use in Apple Calendar or other apps.
+   - From the event modal: **Add to Calendar** → choose **Google Calendar**, **Outlook.com**, **Office 365**, or **Download .ics file** for Apple Calendar or other apps.
 
 7. **Downloads**
    - Download event **poster** and **attachments** (PDFs, documents, images) from the event modal.
