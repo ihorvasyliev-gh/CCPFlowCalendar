@@ -113,6 +113,11 @@ export const exportToExcel = async (events: Event[]): Promise<Blob> => {
       ? RECURRENCE_LABELS[event.recurrence.type] || event.recurrence.type
       : '';
     const commentsText = (event.comments ?? [])
+      .filter(c => {
+        const cDate = c.occurrenceDate instanceof Date ? c.occurrenceDate : new Date(c.occurrenceDate);
+        // Compare timestamps to ensure the comment belongs to this specific event occurrence
+        return cDate.getTime() === date.getTime();
+      })
       .map(c => {
         const createdAt = c.createdAt instanceof Date ? c.createdAt : new Date(c.createdAt);
         return `${c.userName} (${createdAt.toLocaleString()}): ${c.content}`;
