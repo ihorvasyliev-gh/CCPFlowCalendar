@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, X, Check, Trash2, Calendar, Users, AlertCircle } from 'lucide-react';
-import { Notification, getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, subscribeToNotifications } from '../services/notificationService';
+import { Notification, getNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from '../services/notificationService';
 import { Event } from '../types';
 
 interface NotificationCenterProps {
@@ -19,11 +19,46 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ userId, events 
   // Filter upcoming events that user has RSVP'd to
   const upcomingRsvpEvents = React.useMemo(() => {
     const now = new Date();
-    return events
-      .filter(e => userRsvpEventIds.has(e.id)) // User RSVP'd
-      .filter(e => new Date(e.date) > now) // Future event
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) // Sort by date ascending
-      .slice(0, 5); // Take top 5
+    const rsvpEvents: Event[] = [];
+    const eventsMap = new Map(events.map(e => [e.id, e]));
+
+    userRsvpEventIds.forEach((rsvpId: string) => {
+      // 1. Try exact match (simple ID)
+      if (eventsMap.has(rsvpId)) {
+        const event = eventsMap.get(rsvpId)!;
+        if (new Date(event.date) > now) {
+          rsvpEvents.push(event);
+        }
+        return;
+      }
+
+      // 2. Try composite ID (eventId_timestamp)
+      // Format from rsvpService: `${event_id}_${occurrence_date.getTime()}`
+      const lastUnderscoreIndex = rsvpId.lastIndexOf('_');
+      if (lastUnderscoreIndex !== -1) {
+        const eventId = rsvpId.substring(0, lastUnderscoreIndex);
+        const timestampStr = rsvpId.substring(lastUnderscoreIndex + 1);
+        const timestamp = parseInt(timestampStr, 10);
+
+        if (eventsMap.has(eventId) && !isNaN(timestamp)) {
+          const baseEvent = eventsMap.get(eventId)!;
+          const instanceDate = new Date(timestamp);
+
+          if (instanceDate > now) {
+            // Create a virtual instance for this RSVP
+            rsvpEvents.push({
+              ...baseEvent,
+              id: rsvpId, // Use unique composite ID
+              date: instanceDate // Use specific instance date
+            });
+          }
+        }
+      }
+    });
+
+    return rsvpEvents
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, 5);
   }, [events, userRsvpEventIds]);
 
   useEffect(() => {
