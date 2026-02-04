@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
+import { useTheme } from './ThemeContext';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -55,6 +56,9 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 };
 
 const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: string) => void }> = ({ toasts, onRemove }) => {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
   const getIcon = (type: ToastType) => {
     switch (type) {
       case 'success':
@@ -69,6 +73,18 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: string) => void
   };
 
   const getStyles = (type: ToastType) => {
+    if (isDark) {
+      switch (type) {
+        case 'success':
+          return 'bg-green-900/90 border-green-700 text-green-100';
+        case 'error':
+          return 'bg-red-900/90 border-red-700 text-red-100';
+        case 'warning':
+          return 'bg-yellow-900/90 border-yellow-700 text-yellow-100';
+        default:
+          return 'bg-blue-900/90 border-blue-700 text-blue-100';
+      }
+    }
     switch (type) {
       case 'success':
         return 'bg-green-50 border-green-200 text-green-800';
@@ -96,7 +112,7 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: string) => void
           </div>
           <button
             onClick={() => onRemove(toast.id)}
-            className="flex-shrink-0 text-gray-400 hover:text-gray-600"
+            className="flex-shrink-0 text-gray-400 hover:text-gray-300 dark:text-slate-400 dark:hover:text-slate-300"
             aria-label="Close"
           >
             <X className="h-4 w-4" />

@@ -208,7 +208,7 @@ const AppContent: React.FC = () => {
       }
 
       if (isManual) {
-        // showToast('Calendar refreshed', 'success');
+        showToast('Calendar updated', 'success', 3000);
         // Optional: slight delay to show loading state if it was too fast
         setTimeout(() => setLoadingEvents(false), 500);
       }
@@ -324,6 +324,34 @@ const AppContent: React.FC = () => {
 
     return () => clearInterval(syncInterval);
   }, [user]);
+
+  // Pull-to-refresh on mobile when at top of page
+  const pullStartYRef = React.useRef<number | null>(null);
+  useEffect(() => {
+    if (!user || !isMobile) return;
+    const handleTouchStart = (e: TouchEvent) => {
+      if (window.scrollY <= 10) {
+        pullStartYRef.current = e.touches[0].clientY;
+      } else {
+        pullStartYRef.current = null;
+      }
+    };
+    const handleTouchEnd = (e: TouchEvent) => {
+      const startY = pullStartYRef.current;
+      pullStartYRef.current = null;
+      if (startY == null || window.scrollY > 10) return;
+      const endY = e.changedTouches[0].clientY;
+      if (endY - startY > 70) {
+        refreshEvents(true);
+      }
+    };
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [user, isMobile, refreshEvents]);
 
   // Auth Handlers - memoized callbacks
   const handleLogin = useCallback((loggedInUser: User) => {
@@ -692,8 +720,9 @@ const AppContent: React.FC = () => {
 
   if (isSessionLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900 gap-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Restoring session…</p>
       </div>
     );
   }
@@ -710,8 +739,9 @@ const AppContent: React.FC = () => {
         onAddEventClick={handleCreateClick}
         onExportClick={handleExportClick}
         onRefresh={() => refreshEvents(true)}
-        events={events} // Pass events to Navbar
-        userRsvpEventIds={userRsvpEventIds} // Pass RSVP IDs to Navbar
+        loadingEvents={loadingEvents}
+        events={events}
+        userRsvpEventIds={userRsvpEventIds}
       />
 
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -782,24 +812,12 @@ const AppContent: React.FC = () => {
       </footer>
 
       {isMobile && (
-        <>
-          <BottomNavigation
-            user={user}
-            onHomeClick={() => {
-              // Just scroll to top or reset view?
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            onCreateClick={handleCreateClick}
-            onProfileClick={() => {
-              // Simple profile action for now - maybe toggle mobile menu or just show user info
-              // Since we don't have a dedicated profile page, we'll re-use the mobile menu for now or just do nothing/toast
-              // Let's make it toggle the mobile menu if possible, or just log out confirm?
-              // For now, let's wire it to a toast or simple action
-              showToast('Profile settings coming soon', 'info');
-            }}
-            activeTab="home"
-          />
-        </>
+        <BottomNavigation
+          onHomeClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          onCreateClick={handleCreateClick}
+          showCreateButton={user.role === UserRole.ADMIN}
+          activeTab="home"
+        />
       )}
     </div>
   );

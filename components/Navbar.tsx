@@ -10,21 +10,18 @@ interface NavbarProps {
   onAddEventClick: () => void;
   onExportClick?: () => void;
   onRefresh?: () => void;
+  loadingEvents?: boolean;
   events?: any[]; // Using any[] to avoid circular dependency issues if types are mixed, but ideally Event[]
   userRsvpEventIds?: Set<string>;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExportClick, onRefresh, events = [], userRsvpEventIds = new Set() }) => {
+const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExportClick, onRefresh, loadingEvents = false, events = [], userRsvpEventIds = new Set() }) => {
   const { theme, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefreshClick = () => {
     if (onRefresh) {
-      setIsRefreshing(true);
       onRefresh();
-      // Reset animation state after a delay
-      setTimeout(() => setIsRefreshing(false), 1000);
     }
   };
 
@@ -56,7 +53,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onAddEventClick, onExpo
               title="Click to refresh events"
             >
               <div className="relative flex items-center justify-center p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-brand-600 dark:text-brand-400 btn-hover-effect overflow-hidden">
-                <Calendar className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <Calendar className={`h-5 w-5 ${loadingEvents ? 'animate-spin' : ''}`} />
               </div>
               <div className="flex flex-col">
                 <span className="font-semibold text-lg tracking-tight leading-none text-slate-900 dark:text-white select-none">CCP Events</span>

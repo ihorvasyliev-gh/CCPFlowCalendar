@@ -37,6 +37,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
   // Swipe Gestures
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [swipeHint, setSwipeHint] = useState<'left' | 'right' | null>(null);
   const minSwipeDistance = 50;
 
   const onTouchStart = (e: React.TouchEvent) => {
@@ -55,10 +56,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
     const isRightSwipe = distance < -minSwipeDistance;
 
     if (isLeftSwipe) {
+      setSwipeHint('left');
       nextMonth();
+      setTimeout(() => setSwipeHint(null), 180);
     }
     if (isRightSwipe) {
+      setSwipeHint('right');
       prevMonth();
+      setTimeout(() => setSwipeHint(null), 180);
     }
   };
 
@@ -239,7 +244,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
 
       {/* Grid View */}
       {viewMode === 'grid' && (
-        <div className="p-3 sm:p-6">
+        <div className={`p-3 sm:p-6 transition-transform duration-150 ${swipeHint === 'left' ? '-translate-x-1' : swipeHint === 'right' ? 'translate-x-1' : ''}`}>
           <div key={`month-${currentDate.getFullYear()}-${currentDate.getMonth()}`} className="animate-fade-in">
             <div className="grid grid-cols-7 mb-2">
               {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
@@ -304,6 +309,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
 
       {/* List View */}
       {viewMode === 'list' && (
+        <div className={`transition-transform duration-150 ${swipeHint === 'left' ? '-translate-x-1' : swipeHint === 'right' ? 'translate-x-1' : ''}`}>
         <div key={`list-${currentDate.getFullYear()}-${currentDate.getMonth()}`} className="animate-fade-in divide-y divide-slate-100 dark:divide-slate-800">
           {listViewEvents.length === 0 ? (
             <div className="p-8 sm:p-12 text-center text-slate-400 text-sm">No events found for this month.</div>
@@ -363,6 +369,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, onEventClick, onPre
             )}
             </>
           )}
+        </div>
         </div>
       )}
     </div>
