@@ -15,7 +15,7 @@ export const exportToICal = (events: Event[]): string => {
 
   events.forEach(event => {
     ical += 'BEGIN:VEVENT\r\n';
-    ical += `UID:${event.id}@ccp-events\r\n`;
+    ical += `UID:${event.instanceKey || event.id}@ccp-events\r\n`;
     ical += `DTSTART:${formatDate(event.date)}\r\n`;
     const endDate = new Date(event.date);
     endDate.setHours(endDate.getHours() + 1); // Default 1 hour duration

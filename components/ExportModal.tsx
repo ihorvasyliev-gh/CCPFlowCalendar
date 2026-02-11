@@ -23,13 +23,6 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, events }) =>
   if (!isOpen) return null;
 
   const handleExport = async () => {
-    if (exportFormat === 'ical') {
-      const icalContent = exportToICal(events);
-      downloadFile(icalContent, 'ccp-events.ics', 'text/calendar');
-      onClose();
-      return;
-    }
-
     setExporting(true);
     try {
       const eventsWithRelated = await getEventsWithRelated(events);
@@ -58,8 +51,14 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, events }) =>
         : new Date(rangeStart.getTime() + twoYearsMs);
 
       const expanded = expandRecurringEvents(eventsWithRelated, rangeStart, rangeEnd, exceptionsMap);
-      const blob = await exportToExcel(expanded);
-      downloadBlob(blob, 'ccp-events.xlsx');
+
+      if (exportFormat === 'ical') {
+        const icalContent = exportToICal(expanded);
+        downloadFile(icalContent, 'ccp-events.ics', 'text/calendar');
+      } else {
+        const blob = await exportToExcel(expanded);
+        downloadBlob(blob, 'ccp-events.xlsx');
+      }
       onClose();
     } catch (err) {
       console.error('Export failed:', err);
