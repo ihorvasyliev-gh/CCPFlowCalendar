@@ -39,9 +39,9 @@ const getCachedResult = (cacheKey: string, rangeStart: Date, rangeEnd: Date): Ev
   const now = Date.now();
   const entry = expansionCache.find(
     e => e.eventIds === cacheKey.split('_')[0] &&
-         e.rangeStart === rangeStart.getTime() &&
-         e.rangeEnd === rangeEnd.getTime() &&
-         (now - e.timestamp) < CACHE_TTL
+      e.rangeStart === rangeStart.getTime() &&
+      e.rangeEnd === rangeEnd.getTime() &&
+      (now - e.timestamp) < CACHE_TTL
   );
   return entry ? entry.events : null;
 };
@@ -54,7 +54,7 @@ const setCachedResult = (cacheKey: string, rangeStart: Date, rangeEnd: Date, res
   if (expansionCache.length >= CACHE_SIZE) {
     expansionCache.shift();
   }
-  
+
   expansionCache.push({
     events: result,
     rangeStart: rangeStart.getTime(),
@@ -73,8 +73,8 @@ const setCachedResult = (cacheKey: string, rangeStart: Date, rangeEnd: Date, res
  * asynchronously. For best results, preload exceptions before calling this function.
  */
 export const expandRecurringEvents = (
-  events: Event[], 
-  rangeStart: Date, 
+  events: Event[],
+  rangeStart: Date,
   rangeEnd: Date,
   exceptionsMap?: Map<string, Date[]>
 ): Event[] => {
@@ -96,8 +96,40 @@ export const expandRecurringEvents = (
       return;
     }
 
-    // 2. If it is recurring, generate instances
+    // 2. Handle custom dates recurrence (manually picked dates)
     const rule = event.recurrence;
+
+    if (rule.type === 'custom' && rule.customDates && rule.customDates.length > 0) {
+      const exceptions = exceptionsMap?.get(event.id);
+      rule.customDates.forEach(customDate => {
+        const d = new Date(customDate);
+        // Copy time from original event
+        d.setHours(event.date.getHours(), event.date.getMinutes(), event.date.getSeconds(), event.date.getMilliseconds());
+
+        if (d >= rangeStart && d <= rangeEnd) {
+          // Check if this instance is excluded
+          const isExcluded = exceptions?.some(excDate => {
+            const excDateOnly = new Date(excDate);
+            excDateOnly.setHours(0, 0, 0, 0);
+            const instanceDateOnly = new Date(d);
+            instanceDateOnly.setHours(0, 0, 0, 0);
+            return excDateOnly.getTime() === instanceDateOnly.getTime();
+          });
+
+          if (!isExcluded) {
+            const instanceKey = `${event.id}_${d.getTime()}`;
+            expandedEvents.push({
+              ...event,
+              instanceKey,
+              date: new Date(d),
+            });
+          }
+        }
+      });
+      return;
+    }
+
+    // 3. Pattern-based recurrence (daily/weekly/monthly/yearly)
     const interval = rule.interval || 1;
     let currentInstanceDate = new Date(event.date);
 
@@ -202,7 +234,7 @@ export const expandRecurringEvents = (
 
   // Cache the result
   setCachedResult(cacheKey, rangeStart, rangeEnd, expandedEvents);
-  
+
   return expandedEvents;
 };
 

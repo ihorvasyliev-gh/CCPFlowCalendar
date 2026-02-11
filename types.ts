@@ -29,6 +29,7 @@ export interface RecurrenceRule {
   endDate?: Date;
   occurrences?: number;
   daysOfWeek?: number[]; // 0-6, Sunday-Saturday
+  customDates?: Date[]; // For 'custom' type: manually picked dates
 }
 
 export interface Attachment {

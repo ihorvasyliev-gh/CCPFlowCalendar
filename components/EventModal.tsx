@@ -11,6 +11,7 @@ import { validateEvent } from '../utils/validation';
 import { useTheme } from '../contexts/ThemeContext';
 import { useModalFocusTrap } from '../hooks/useModalFocusTrap';
 import LazyImage from './LazyImage';
+import DatePickerCalendar from './DatePickerCalendar';
 
 interface EventModalProps {
   isOpen: boolean;
@@ -65,9 +66,10 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
   const [showCalendarDropdown, setShowCalendarDropdown] = useState(false);
 
   // Recurrence State
-  const [recurrenceType, setRecurrenceType] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('none');
+  const [recurrenceType, setRecurrenceType] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'>('none');
   const [recurrenceInterval, setRecurrenceInterval] = useState<number>(1);
   const [recurrenceEndDate, setRecurrenceEndDate] = useState<string>('');
+  const [customDates, setCustomDates] = useState<Date[]>([]);
 
   // Inline validation errors (field id -> message)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -147,10 +149,12 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
           setRecurrenceType(event.recurrence.type as any);
           setRecurrenceInterval(event.recurrence.interval || 1);
           setRecurrenceEndDate(event.recurrence.endDate ? event.recurrence.endDate.toISOString().split('T')[0] : '');
+          setCustomDates(event.recurrence.customDates ? event.recurrence.customDates.map(d => new Date(d)) : []);
         } else {
           setRecurrenceType('none');
           setRecurrenceInterval(1);
           setRecurrenceEndDate('');
+          setCustomDates([]);
         }
 
         setIsEditing(false); // Reset to view mode initially
@@ -221,6 +225,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
         setRecurrenceType('none');
         setRecurrenceInterval(1);
         setRecurrenceEndDate('');
+        setCustomDates([]);
         setFieldErrors({});
       }
     }
@@ -289,8 +294,9 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
       maxAttendees: maxAttendees ? Number(maxAttendees) : undefined,
       recurrence: recurrenceType !== 'none' ? {
         type: recurrenceType,
-        interval: recurrenceInterval,
-        endDate: recurrenceEndDate ? new Date(recurrenceEndDate) : undefined,
+        interval: recurrenceType !== 'custom' ? recurrenceInterval : undefined,
+        endDate: recurrenceType !== 'custom' && recurrenceEndDate ? new Date(recurrenceEndDate) : undefined,
+        customDates: recurrenceType === 'custom' ? customDates : undefined,
       } : undefined
     };
 
@@ -337,8 +343,9 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
         creatorId: event?.creatorId || currentUserId,
         recurrence: recurrenceType !== 'none' ? {
           type: recurrenceType,
-          interval: recurrenceInterval,
-          endDate: recurrenceEndDate ? new Date(recurrenceEndDate) : undefined,
+          interval: recurrenceType !== 'custom' ? recurrenceInterval : undefined,
+          endDate: recurrenceType !== 'custom' && recurrenceEndDate ? new Date(recurrenceEndDate) : undefined,
+          customDates: recurrenceType === 'custom' ? customDates : undefined,
         } : undefined
       };
 
@@ -899,44 +906,58 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                 {/* Recurrence Section */}
                 <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
                   <h4 className="text-xs font-bold text-slate-900 dark:text-white mb-3">RECURRENCE</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Repeat</label>
-                      <select
-                        value={recurrenceType}
-                        onChange={(e) => setRecurrenceType(e.target.value as any)}
-                        className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-2.5 py-2.5 sm:py-1.5 text-sm focus:ring-2 focus:ring-brand-500/20 transition-all min-h-[44px] sm:min-h-0"
-                      >
-                        <option value="none">None</option>
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="yearly">Yearly</option>
-                      </select>
+                  <div className="space-y-4">
+                    <div className={recurrenceType !== 'custom' ? 'grid grid-cols-1 sm:grid-cols-3 gap-4' : ''}>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Repeat</label>
+                        <select
+                          value={recurrenceType}
+                          onChange={(e) => setRecurrenceType(e.target.value as any)}
+                          className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-2.5 py-2.5 sm:py-1.5 text-sm focus:ring-2 focus:ring-brand-500/20 transition-all min-h-[44px] sm:min-h-0"
+                        >
+                          <option value="none">None</option>
+                          <option value="daily">Daily</option>
+                          <option value="weekly">Weekly</option>
+                          <option value="monthly">Monthly</option>
+                          <option value="yearly">Yearly</option>
+                          <option value="custom">Custom Dates</option>
+                        </select>
+                      </div>
+
+                      {recurrenceType !== 'none' && recurrenceType !== 'custom' && (
+                        <>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Interval (Every X)</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={recurrenceInterval}
+                              onChange={(e) => setRecurrenceInterval(Number(e.target.value))}
+                              className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-2.5 py-2.5 sm:py-1.5 text-sm focus:ring-2 focus:ring-brand-500/20 transition-all min-h-[44px] sm:min-h-0"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase">End Date</label>
+                            <input
+                              type="date"
+                              value={recurrenceEndDate}
+                              onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                              className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-2.5 py-2.5 sm:py-1.5 text-sm focus:ring-2 focus:ring-brand-500/20 transition-all min-h-[44px] sm:min-h-0"
+                            />
+                          </div>
+                        </>
+                      )}
                     </div>
 
-                    {recurrenceType !== 'none' && (
-                      <>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase">Interval (Every X)</label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={recurrenceInterval}
-                            onChange={(e) => setRecurrenceInterval(Number(e.target.value))}
-                            className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-2.5 py-2.5 sm:py-1.5 text-sm focus:ring-2 focus:ring-brand-500/20 transition-all min-h-[44px] sm:min-h-0"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase">End Date</label>
-                          <input
-                            type="date"
-                            value={recurrenceEndDate}
-                            onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                            className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-white px-2.5 py-2.5 sm:py-1.5 text-sm focus:ring-2 focus:ring-brand-500/20 transition-all min-h-[44px] sm:min-h-0"
-                          />
-                        </div>
-                      </>
+                    {recurrenceType === 'custom' && (
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 mb-2 uppercase">Select Event Dates</label>
+                        <DatePickerCalendar
+                          selectedDates={customDates}
+                          onChange={setCustomDates}
+                          referenceTime={timeStr ? { hours: parseInt(timeStr.split(':')[0]), minutes: parseInt(timeStr.split(':')[1]) } : undefined}
+                        />
+                      </div>
                     )}
                   </div>
                 </div>

@@ -210,7 +210,10 @@ const mapSupabaseEventToEvent = async (
       interval: supabaseEvent.recurrence_interval || undefined,
       endDate: supabaseEvent.recurrence_end_date ? new Date(supabaseEvent.recurrence_end_date) : undefined,
       occurrences: supabaseEvent.recurrence_occurrences || undefined,
-      daysOfWeek: supabaseEvent.recurrence_days_of_week || undefined
+      daysOfWeek: supabaseEvent.recurrence_days_of_week || undefined,
+      customDates: supabaseEvent.recurrence_custom_dates
+        ? supabaseEvent.recurrence_custom_dates.map((d: string) => new Date(d))
+        : undefined
     };
   }
 
@@ -300,6 +303,9 @@ export const createEvent = async (eventData: Omit<Event, 'id' | 'createdAt'>, us
     recurrence_end_date: eventData.recurrence?.endDate ? eventData.recurrence.endDate.toISOString() : null,
     recurrence_occurrences: eventData.recurrence?.occurrences || null,
     recurrence_days_of_week: eventData.recurrence?.daysOfWeek || null,
+    recurrence_custom_dates: eventData.recurrence?.customDates
+      ? eventData.recurrence.customDates.map(d => d.toISOString())
+      : null,
     rsvp_enabled: eventData.rsvpEnabled || false,
     max_attendees: eventData.maxAttendees || null,
     creator_id: userId
@@ -385,6 +391,9 @@ export const updateEvent = async (id: string, eventData: Omit<Event, 'id' | 'cre
     recurrence_end_date: eventData.recurrence?.endDate ? eventData.recurrence.endDate.toISOString() : null,
     recurrence_occurrences: eventData.recurrence?.occurrences || null,
     recurrence_days_of_week: eventData.recurrence?.daysOfWeek || null,
+    recurrence_custom_dates: eventData.recurrence?.customDates
+      ? eventData.recurrence.customDates.map(d => d.toISOString())
+      : null,
     rsvp_enabled: eventData.rsvpEnabled || false,
     max_attendees: eventData.maxAttendees || null
   };
@@ -563,7 +572,7 @@ export const deleteRecurrenceInstance = async (eventId: string, instanceDate: Da
     month: '2-digit',
     year: 'numeric'
   });
-  
+
   const { error: historyError } = await supabase
     .from('event_history')
     .insert({
