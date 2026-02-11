@@ -24,6 +24,7 @@ export const exportToICal = (events: Event[]): string => {
     ical += `DESCRIPTION:${event.description.replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n')}\r\n`;
     ical += `LOCATION:${event.location.replace(/,/g, '\\,').replace(/;/g, '\\;')}\r\n`;
     ical += `DTSTAMP:${formatDate(new Date())}\r\n`;
+    ical += 'SEQUENCE:0\r\n';
     ical += 'END:VEVENT\r\n';
   });
 
