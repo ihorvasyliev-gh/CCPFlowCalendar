@@ -79,6 +79,7 @@ export interface Event {
   rsvpEnabled?: boolean;
   maxAttendees?: number;
   attendees?: string[]; // User IDs
+  attendeeNames?: { userId: string; userName: string }[]; // User Names (for admins)
   comments?: EventComment[];
   history?: EventHistoryEntry[];
   creatorId: string;

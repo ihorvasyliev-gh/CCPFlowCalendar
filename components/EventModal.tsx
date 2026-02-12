@@ -55,6 +55,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
   const [comments, setComments] = useState<EventComment[]>([]);
   const [history, setHistory] = useState<EventHistoryEntry[]>([]);
   const [attendees, setAttendees] = useState<string[]>([]);
+  const [attendeeNames, setAttendeeNames] = useState<{ userId: string; userName: string }[]>([]);
 
   const [userHasRsvped, setUserHasRsvped] = useState(false);
 
@@ -122,6 +123,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
         setComments(event.comments || []);
         setHistory(event.history || []);
         setAttendees(event.attendees || []);
+        setAttendeeNames(event.attendeeNames || []);
 
         // Only update local RSVP state from props if user hasn't interacted recently
         // This ensures the optimistic update loop (Modal -> App -> Modal) doesn't reset state weirdly
@@ -162,7 +164,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
 
         // LAZY LOAD: If details are missing, fetch them in background (no loading state)
         // Note: optimistic update in App.tsx might add attendees, so check other fields too
-        const needsLoading = !event.comments || !event.history || !event.attachments || !event.attendees;
+        const needsLoading = !event.comments || !event.history || !event.attachments || !event.attendees || (!event.attendeeNames && role === UserRole.ADMIN);
 
         // Ref to track if the effect is still valid
         let isActive = true;
@@ -177,6 +179,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
             if (details.history) setHistory(details.history);
             if (details.attendees) {
               setAttendees(details.attendees);
+              if (details.attendeeNames) setAttendeeNames(details.attendeeNames);
               // Re-check RSVP status with fresh attendees list
               // ONLY update if user hasn't interacted yet to avoid overwriting optimistic updates
               if (!hasInteractedWithRsvp.current) {
@@ -219,6 +222,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
         setComments([]);
         setHistory([]);
         setAttendees([]);
+        setAttendeeNames([]);
         setUserHasRsvped(false);
         setIsEditing(false);
         // Reset Recurrence
@@ -742,6 +746,20 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, event, initial
                       >
                         {isRsvping ? <Loader2 className="h-4 w-4 animate-spin" /> : userHasRsvped ? 'Cancel RSVP' : 'Join Event'}
                       </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Admin: Show Attendee Names */}
+                {role === UserRole.ADMIN && attendeeNames.length > 0 && (
+                  <div className="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Attendee List</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {attendeeNames.map((attendee, idx) => (
+                        <span key={idx} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 shadow-sm">
+                          {attendee.userName || 'Unknown User'}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 )}

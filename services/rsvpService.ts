@@ -72,6 +72,28 @@ export const getEventAttendees = async (
   return (data || []).map((r: { user_id: string }) => r.user_id);
 };
 
+export const getEventAttendeesWithNames = async (
+  eventId: string,
+  occurrenceDate: Date
+): Promise<{ userId: string; userName: string }[]> => {
+  const { data, error } = await supabase
+    .from('rsvps')
+    .select('user_id, user_name')
+    .eq('event_id', eventId)
+    .eq('occurrence_date', toISODate(occurrenceDate))
+    .eq('status', 'going');
+
+  if (error) {
+    console.error('Error fetching attendees with names:', error);
+    return [];
+  }
+
+  return (data || []).map((r: { user_id: string; user_name: string }) => ({
+    userId: r.user_id,
+    userName: r.user_name
+  }));
+};
+
 export const hasUserRsvped = async (
   eventId: string,
   userId: string,

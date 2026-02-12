@@ -6,12 +6,13 @@ interface RelatedData {
   commentsByEvent: Record<string, EventComment[]>;
   historyByEvent: Record<string, EventHistoryEntry[]>;
   rsvpsByEvent: Record<string, string[]>;
+  rsvpNamesByEvent: Record<string, { userId: string; userName: string }[]>;
 }
 
 /** Пакетная загрузка связанных данных для списка событий (4 запроса вместо 4×N) */
 const fetchRelatedBatch = async (eventIds: string[]): Promise<RelatedData> => {
   if (eventIds.length === 0) {
-    return { attachmentsByEvent: {}, commentsByEvent: {}, historyByEvent: {}, rsvpsByEvent: {} };
+    return { attachmentsByEvent: {}, commentsByEvent: {}, historyByEvent: {}, rsvpsByEvent: {}, rsvpNamesByEvent: {} };
   }
 
   const [attachmentsRes, commentsRes, historyRes, rsvpsRes] = await Promise.all([
@@ -32,7 +33,7 @@ const fetchRelatedBatch = async (eventIds: string[]): Promise<RelatedData> => {
       .order('timestamp', { ascending: true }),
     supabase
       .from('rsvps')
-      .select('event_id, user_id')
+      .select('event_id, user_id, user_name')
       .in('event_id', eventIds)
       .eq('status', 'going')
   ]);
@@ -41,6 +42,7 @@ const fetchRelatedBatch = async (eventIds: string[]): Promise<RelatedData> => {
   const commentsByEvent: Record<string, EventComment[]> = {};
   const historyByEvent: Record<string, EventHistoryEntry[]> = {};
   const rsvpsByEvent: Record<string, string[]> = {};
+  const rsvpNamesByEvent: Record<string, { userId: string; userName: string }[]> = {};
 
   for (const att of attachmentsRes.data || []) {
     const list = attachmentsByEvent[att.event_id] ??= [];
@@ -83,9 +85,11 @@ const fetchRelatedBatch = async (eventIds: string[]): Promise<RelatedData> => {
   for (const r of rsvpsRes.data || []) {
     const list = rsvpsByEvent[r.event_id] ??= [];
     list.push(r.user_id);
+    const nameList = rsvpNamesByEvent[r.event_id] ??= [];
+    nameList.push({ userId: r.user_id, userName: r.user_name });
   }
 
-  return { attachmentsByEvent, commentsByEvent, historyByEvent, rsvpsByEvent };
+  return { attachmentsByEvent, commentsByEvent, historyByEvent, rsvpsByEvent, rsvpNamesByEvent };
 };
 
 // Загрузка связанных данных для одного события (create/update/addComment).
@@ -111,7 +115,7 @@ const fetchRelatedForOne = async (eventId: string, occurrenceDate: Date): Promis
       .order('timestamp', { ascending: true }),
     supabase
       .from('rsvps')
-      .select('user_id')
+      .select('user_id, user_name')
       .eq('event_id', eventId)
       .eq('occurrence_date', occurrenceIso)
       .eq('status', 'going')
@@ -144,12 +148,17 @@ const fetchRelatedForOne = async (eventId: string, occurrenceDate: Date): Promis
     timestamp: new Date(h.timestamp)
   }));
   const attendees: string[] = (rsvpsRes.data || []).map((r: any) => r.user_id);
+  const attendeeNames: { userId: string; userName: string }[] = (rsvpsRes.data || []).map((r: any) => ({
+    userId: r.user_id,
+    userName: r.user_name
+  }));
 
   return {
     attachmentsByEvent: { [eventId]: attachments },
     commentsByEvent: { [eventId]: comments },
     historyByEvent: { [eventId]: history },
-    rsvpsByEvent: { [eventId]: attendees }
+    rsvpsByEvent: { [eventId]: attendees },
+    rsvpNamesByEvent: { [eventId]: attendeeNames }
   };
 };
 
@@ -166,12 +175,14 @@ export const fetchEventDetails = async (
   const comments = related.commentsByEvent[eventId] || [];
   const history = related.historyByEvent[eventId] || [];
   const attendees = related.rsvpsByEvent[eventId] || [];
+  const attendeeNames = related.rsvpNamesByEvent[eventId] || [];
 
   return {
     attachments,
     comments,
     history,
-    attendees
+    attendees,
+    attendeeNames
   };
 }
 
@@ -186,12 +197,14 @@ const mapSupabaseEventToEvent = async (
   let comments: EventComment[] | undefined;
   let history: EventHistoryEntry[] | undefined;
   let attendees: string[] | undefined;
+  let attendeeNames: { userId: string; userName: string }[] | undefined;
 
   if (related) {
     attachments = related.attachmentsByEvent[eventId];
     comments = related.commentsByEvent[eventId];
     history = related.historyByEvent[eventId];
     attendees = related.rsvpsByEvent[eventId];
+    attendeeNames = related.rsvpNamesByEvent[eventId];
   } else if (!skipRelatedFetch) {
     // Create/Update case: fetch everything immediately to return full object
     const eventDate = new Date(supabaseEvent.date);
@@ -200,6 +213,7 @@ const mapSupabaseEventToEvent = async (
     comments = one.commentsByEvent[eventId] ?? [];
     history = one.historyByEvent[eventId] ?? [];
     attendees = one.rsvpsByEvent[eventId] ?? [];
+    attendeeNames = one.rsvpNamesByEvent[eventId] ?? [];
   }
   // If skipRelatedFetch is true and related is undefined, fields remain undefined (Lazy Load)
 
@@ -236,6 +250,7 @@ const mapSupabaseEventToEvent = async (
     rsvpEnabled: supabaseEvent.rsvp_enabled || false,
     maxAttendees: supabaseEvent.max_attendees || undefined,
     attendees: attendees && attendees.length > 0 ? attendees : undefined,
+    attendeeNames: attendeeNames && attendeeNames.length > 0 ? attendeeNames : undefined,
     comments: comments && comments.length > 0 ? comments : undefined,
     history: history && history.length > 0 ? history : undefined,
     creatorId: supabaseEvent.creator_id,
