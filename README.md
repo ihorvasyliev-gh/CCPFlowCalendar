@@ -7,16 +7,16 @@ A full-featured corporate event calendar for **Cork City Partnership** — built
 | Feature | Description |
 |---------|-------------|
 | 🔐 **Auth & Roles** | Email/password sign-in via Supabase Auth. Staff and Admin roles |
-| 📅 **Calendar Views** | Month grid, list, and agenda views with responsive mobile layout |
+| 📅 **Calendar Views** | Month grid and agenda views with responsive mobile layout |
 | 🔁 **Recurring Events** | Daily, weekly, monthly, yearly, or custom date picks; delete single occurrences |
-| ✅ **RSVP** | Join/cancel per occurrence; attendee list with max capacity |
+| ✅ **RSVP** | Join/cancel per occurrence; |
 | 💬 **Comments** | Per-occurrence comment threads on events |
 | 🔍 **Search & Filters** | By title, description, location, tags, category, creator, date range, status |
 | 📎 **Attachments** | Posters, PDFs, documents, images — stored on Cloudflare R2 |
 | 📤 **Export** | Download events as iCal (`.ics`) or Excel (`.xlsx`) with recurring expansion |
 | 🔗 **Subscribe (ICS Feed)** | Live calendar feed URL — auto-syncs with Outlook, Google Calendar, Apple Calendar |
 | 🗓️ **Add to Calendar** | Per-event: Google Calendar, Outlook.com, Office 365, or `.ics` download |
-| 🔔 **Notifications** | Bell icon with upcoming RSVP'd events; mark read / delete |
+| 🔔 **Notifications** | Bell icon with upcoming RSVP'd events; |
 | 🌙 **Dark Mode** | Light/dark theme toggle, persisted |
 | ⚡ **PWA & Offline** | Service Worker for fast loads and offline support |
 
